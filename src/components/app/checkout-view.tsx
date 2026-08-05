@@ -189,10 +189,12 @@ export function CheckoutView() {
   }
 
   return (
-    <div className="pb-[13.5rem] animate-fade-up">
-      <PageHeader title="Checkout" backHref="/app/cart" />
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="shrink-0">
+        <PageHeader title="Checkout" backHref="/app/cart" />
+      </div>
 
-      <div className="space-y-5 px-4">
+      <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-4 pb-4 no-scrollbar">
         {!user && usingFirebase && (
           <div className="rounded-2xl bg-primary-light px-4 py-3 text-sm text-secondary">
             Please{" "}
@@ -303,7 +305,7 @@ export function CheckoutView() {
                     >
                       <Icon className="h-5 w-5" />
                     </span>
-                    <span className="flex-1 min-w-0">
+                    <span className="min-w-0 flex-1">
                       <span className="block font-semibold text-secondary">
                         {title}
                       </span>
@@ -348,14 +350,14 @@ export function CheckoutView() {
         )}
       </div>
 
-      {/* Fixed liquid-glass checkout summary */}
-      <div className="pointer-events-none fixed bottom-0 left-1/2 z-30 w-full max-w-md -translate-x-1/2">
+      {/* Pinned place-order summary — never scrolls */}
+      <div className="relative z-20 shrink-0">
         <div
           aria-hidden
-          className="h-8 bg-gradient-to-b from-transparent to-white/50 backdrop-blur-[2px]"
+          className="pointer-events-none absolute inset-x-0 -top-8 h-8 bg-gradient-to-b from-transparent to-white/60"
         />
-        <div className="pointer-events-auto border-t border-white/45 bg-white/65 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-16px_48px_rgba(75,46,43,0.14)] backdrop-blur-2xl backdrop-saturate-150 supports-[backdrop-filter]:bg-white/50">
-          <div className="mb-3 space-y-1.5 rounded-[18px] bg-white/85 px-3.5 py-3 shadow-soft backdrop-blur-md">
+        <div className="border-t border-white/45 bg-white/70 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-16px_48px_rgba(75,46,43,0.14)] backdrop-blur-2xl backdrop-saturate-150 supports-[backdrop-filter]:bg-white/55">
+          <div className="mb-3 space-y-1.5 rounded-[18px] bg-white/90 px-3.5 py-3 shadow-soft">
             <div className="flex justify-between text-sm">
               <span className="text-muted">Subtotal</span>
               <span className="font-semibold text-secondary">
