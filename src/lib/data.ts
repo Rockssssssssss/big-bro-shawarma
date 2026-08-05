@@ -1,0 +1,626 @@
+import type {
+  Customer,
+  Delivery,
+  Extra,
+  Order,
+  Product,
+  Review,
+  Reward,
+  Rider,
+  SupportMessage,
+} from "./types";
+
+export const extras: Extra[] = [
+  { id: "cheese", name: "Extra Cheese", price: 5 },
+  { id: "sausage", name: "Extra Sausage", price: 8 },
+  { id: "chicken", name: "Extra Chicken", price: 10 },
+];
+
+export const products: Product[] = [
+  {
+    id: "chicken-shawarma",
+    name: "Chicken Shawarma",
+    description: "Juicy grilled chicken, garlic sauce & fresh veg.",
+    ingredients: [
+      "Grilled chicken",
+      "Garlic sauce",
+      "Tomato",
+      "Cucumber",
+      "Onion",
+      "Pita bread",
+    ],
+    price: 35,
+    prepTime: 12,
+    image: "/food/chicken-shawarma.jpg",
+    images: ["/food/chicken-shawarma.jpg", "/food/hero-shawarma.jpg"],
+    category: "shawarma",
+    rating: 4.8,
+    tags: ["popular", "bestseller"],
+    available: true,
+  },
+  {
+    id: "beef-shawarma",
+    name: "Beef Shawarma",
+    description: "Tender beef, pickles & creamy tahini.",
+    ingredients: [
+      "Grilled beef",
+      "Tahini",
+      "Pickles",
+      "Onion",
+      "Parsley",
+      "Pita bread",
+    ],
+    price: 42,
+    prepTime: 14,
+    image: "/food/beef-shawarma.jpg",
+    images: ["/food/beef-shawarma.jpg", "/food/category-shawarma.jpg"],
+    category: "shawarma",
+    rating: 4.7,
+    tags: ["popular", "recommended"],
+    available: true,
+  },
+  {
+    id: "mixed-shawarma",
+    name: "Mixed Shawarma",
+    description: "Chicken & beef combo with double sauce.",
+    ingredients: [
+      "Chicken",
+      "Beef",
+      "Garlic sauce",
+      "Tahini",
+      "Salad mix",
+      "Pita bread",
+    ],
+    price: 48,
+    prepTime: 15,
+    image: "/food/mixed-shawarma.jpg",
+    images: ["/food/mixed-shawarma.jpg"],
+    category: "shawarma",
+    rating: 4.9,
+    tags: ["bestseller", "recommended"],
+    available: true,
+  },
+  {
+    id: "family-box",
+    name: "Big Bro Family Box",
+    description: "4 shawarmas + loaded fries. Feeds the squad.",
+    ingredients: ["4 shawarmas", "Loaded fries", "Sauces", "Salad"],
+    price: 160,
+    prepTime: 25,
+    image: "/food/family-box.jpg",
+    images: ["/food/family-box.jpg", "/food/category-packages.jpg"],
+    category: "packages",
+    rating: 4.9,
+    tags: ["popular", "bestseller"],
+    available: true,
+  },
+  {
+    id: "solo-combo",
+    name: "Solo Combo",
+    description: "1 shawarma, crispy fries & a chilled drink.",
+    ingredients: ["1 shawarma", "Crispy fries", "Soft drink"],
+    price: 55,
+    prepTime: 15,
+    image: "/food/solo-combo.jpg",
+    images: ["/food/solo-combo.jpg", "/food/combo-meal.jpg"],
+    category: "packages",
+    rating: 4.8,
+    tags: ["popular", "recommended"],
+    available: true,
+  },
+  {
+    id: "orange-soda",
+    name: "Orange Soda",
+    description: "Ice-cold, fizzy & refreshing.",
+    ingredients: ["Carbonated orange soda"],
+    price: 10,
+    prepTime: 2,
+    image: "/food/orange-soda.jpg",
+    images: ["/food/orange-soda.jpg", "/food/category-drinks.jpg"],
+    category: "drinks",
+    rating: 4.5,
+    tags: ["recommended"],
+    available: true,
+  },
+];
+
+export const rewards: Reward[] = [
+  { id: "r5", amount: 5, points: 100, label: "GH₵5.00 Voucher" },
+  { id: "r10", amount: 10, points: 180, label: "GH₵10.00 Voucher" },
+  { id: "r30", amount: 30, points: 450, label: "GH₵30.00 Voucher" },
+  { id: "r50", amount: 50, points: 700, label: "GH₵50.00 Voucher" },
+];
+
+export const currentCustomer = {
+  id: "c1",
+  name: "Nana Adjei",
+  email: "nana.adjei@example.com",
+  phone: "+233 24 555 8899",
+  points: 240,
+  orders: 18,
+  totalSpent: 1240,
+  memberLevel: "Gold",
+};
+
+export const restaurant = {
+  name: "Big Bro Shawarma",
+  address: "Osu Oxford Street, Accra",
+  phone: "+233 30 291 8844",
+  phones: ["+233 599 678 245", "+233 533 327 161"],
+  email: "hello@bigbroshawarma.com",
+  website: "www.bigbroshawarma.com",
+  hours: "Mon–Sun, 11 AM – 11 PM",
+  deliveryEta: "25–35 min",
+  deliveryFee: 12,
+  freeDeliveryMin: 150,
+  deliveryRadiusKm: 8,
+};
+
+export const reviews: Review[] = [
+  {
+    id: "rv1",
+    name: "Ama Mensah",
+    rating: 5,
+    comment: "Best shawarma in Accra. Always hot and packed with flavour.",
+    date: "2026-07-28",
+    product: "Chicken Shawarma",
+  },
+  {
+    id: "rv2",
+    name: "Kojo Boateng",
+    rating: 5,
+    comment: "Family Box fed everyone. Rider was on time.",
+    date: "2026-07-25",
+    product: "Big Bro Family Box",
+  },
+  {
+    id: "rv3",
+    name: "Efua Darko",
+    rating: 4,
+    comment: "Solo Combo is perfect for lunch. Garlic sauce is elite.",
+    date: "2026-07-20",
+    product: "Solo Combo",
+  },
+  {
+    id: "rv4",
+    name: "Yaw Osei",
+    rating: 5,
+    comment: "Ordered Mixed Shawarma twice this week. No regrets.",
+    date: "2026-07-18",
+    product: "Mixed Shawarma",
+  },
+  {
+    id: "rv5",
+    name: "Akosua Poku",
+    rating: 4,
+    comment: "Fast delivery to Cantonments. Packaging was solid.",
+    date: "2026-07-12",
+    product: "Beef Shawarma",
+  },
+];
+
+export const riders: Rider[] = [
+  {
+    id: "rd1",
+    name: "Kwame Asante",
+    phone: "+233 20 111 2233",
+    status: "available",
+    deliveriesToday: 7,
+    rating: 4.9,
+    earnings: 186,
+  },
+  {
+    id: "rd2",
+    name: "Ibrahim Fuseini",
+    phone: "+233 24 444 5566",
+    status: "busy",
+    deliveriesToday: 11,
+    rating: 4.8,
+    earnings: 240,
+  },
+  {
+    id: "rd3",
+    name: "Daniel Quaye",
+    phone: "+233 27 777 8899",
+    status: "offline",
+    deliveriesToday: 0,
+    rating: 4.6,
+    earnings: 0,
+  },
+  {
+    id: "rd4",
+    name: "Prince Owusu",
+    phone: "+233 55 333 2211",
+    status: "available",
+    deliveriesToday: 5,
+    rating: 4.7,
+    earnings: 132,
+  },
+];
+
+export const customers: Customer[] = [
+  {
+    id: "c1",
+    name: "Nana Adjei",
+    email: "nana.adjei@example.com",
+    phone: "+233 24 555 8899",
+    orders: 18,
+    totalSpent: 1240,
+    points: 240,
+    joined: "2025-11-02",
+  },
+  {
+    id: "c2",
+    name: "Ama Mensah",
+    email: "ama.m@example.com",
+    phone: "+233 20 998 1122",
+    orders: 12,
+    totalSpent: 860,
+    points: 180,
+    joined: "2026-01-14",
+  },
+  {
+    id: "c3",
+    name: "Kojo Boateng",
+    email: "kojo.b@example.com",
+    phone: "+233 27 441 0099",
+    orders: 9,
+    totalSpent: 720,
+    points: 150,
+    joined: "2026-02-20",
+  },
+  {
+    id: "c4",
+    name: "Efua Darko",
+    email: "efua.d@example.com",
+    phone: "+233 55 220 3344",
+    orders: 6,
+    totalSpent: 410,
+    points: 95,
+    joined: "2026-04-08",
+  },
+  {
+    id: "c5",
+    name: "Yaw Osei",
+    email: "yaw.o@example.com",
+    phone: "+233 24 110 7788",
+    orders: 21,
+    totalSpent: 1580,
+    points: 310,
+    joined: "2025-09-18",
+  },
+];
+
+export const orders: Order[] = [
+  {
+    id: "BB-1042",
+    customerName: "Nana Adjei",
+    customerPhone: "+233 24 555 8899",
+    address: "Osu Oxford Street, Accra",
+    landmark: "Blue gate near the pharmacy",
+    date: "2026-08-04",
+    time: "12:18",
+    status: "preparing",
+    items: [
+      {
+        productId: "chicken-shawarma",
+        name: "Chicken Shawarma",
+        quantity: 1,
+        price: 35,
+        extras: [],
+      },
+      {
+        productId: "orange-soda",
+        name: "Orange Soda",
+        quantity: 1,
+        price: 10,
+        extras: [],
+      },
+    ],
+    subtotal: 45,
+    deliveryFee: 12,
+    total: 57,
+    paymentMethod: "cash",
+    rider: {
+      id: "rd1",
+      name: "Kwame Asante",
+      phone: "+233 20 111 2233",
+      eta: "18 min",
+    },
+  },
+  {
+    id: "BB-1038",
+    customerName: "Ama Mensah",
+    customerPhone: "+233 20 998 1122",
+    address: "Cantonments, Accra",
+    landmark: "White apartment, 2nd floor",
+    date: "2026-08-04",
+    time: "11:45",
+    status: "out-for-delivery",
+    items: [
+      {
+        productId: "mixed-shawarma",
+        name: "Mixed Shawarma",
+        quantity: 2,
+        price: 96,
+        extras: ["cheese"],
+      },
+    ],
+    subtotal: 106,
+    deliveryFee: 12,
+    total: 118,
+    paymentMethod: "momo",
+    rider: {
+      id: "rd2",
+      name: "Ibrahim Fuseini",
+      phone: "+233 24 444 5566",
+      eta: "8 min",
+    },
+  },
+  {
+    id: "BB-1031",
+    customerName: "Kojo Boateng",
+    customerPhone: "+233 27 441 0099",
+    address: "Labone, Accra",
+    landmark: "Opposite the filling station",
+    date: "2026-08-03",
+    time: "19:22",
+    status: "delivered",
+    items: [
+      {
+        productId: "family-box",
+        name: "Big Bro Family Box",
+        quantity: 1,
+        price: 160,
+        extras: [],
+      },
+    ],
+    subtotal: 160,
+    deliveryFee: 0,
+    total: 160,
+    paymentMethod: "cash",
+    rider: {
+      id: "rd1",
+      name: "Kwame Asante",
+      phone: "+233 20 111 2233",
+    },
+    reviewed: false,
+  },
+  {
+    id: "BB-1024",
+    customerName: "Nana Adjei",
+    customerPhone: "+233 24 555 8899",
+    address: "Osu Oxford Street, Accra",
+    landmark: "Blue gate near the pharmacy",
+    date: "2026-08-01",
+    time: "13:05",
+    status: "delivered",
+    items: [
+      {
+        productId: "solo-combo",
+        name: "Solo Combo",
+        quantity: 1,
+        price: 55,
+        extras: [],
+      },
+    ],
+    subtotal: 55,
+    deliveryFee: 12,
+    total: 67,
+    paymentMethod: "momo",
+    reviewed: true,
+  },
+  {
+    id: "BB-1045",
+    customerName: "Efua Darko",
+    customerPhone: "+233 55 220 3344",
+    address: "Airport Residential, Accra",
+    landmark: "Green fence, house #12",
+    date: "2026-08-04",
+    time: "12:40",
+    status: "received",
+    items: [
+      {
+        productId: "beef-shawarma",
+        name: "Beef Shawarma",
+        quantity: 2,
+        price: 84,
+        extras: ["sausage"],
+      },
+      {
+        productId: "orange-soda",
+        name: "Orange Soda",
+        quantity: 2,
+        price: 20,
+        extras: [],
+      },
+    ],
+    subtotal: 112,
+    deliveryFee: 12,
+    total: 124,
+    paymentMethod: "cash",
+  },
+];
+
+export const deliveries: Delivery[] = [
+  {
+    id: "d1",
+    orderId: "BB-1038",
+    customerName: "Ama Mensah",
+    customerPhone: "+233 20 998 1122",
+    address: "Cantonments, Accra",
+    landmark: "White apartment, 2nd floor",
+    amount: 118,
+    paymentMethod: "momo",
+    status: "picked-up",
+    items: [
+      {
+        productId: "mixed-shawarma",
+        name: "Mixed Shawarma",
+        quantity: 2,
+        price: 96,
+        extras: ["Extra Cheese"],
+      },
+    ],
+    time: "11:50",
+  },
+  {
+    id: "d2",
+    orderId: "BB-1042",
+    customerName: "Nana Adjei",
+    customerPhone: "+233 24 555 8899",
+    address: "Osu Oxford Street, Accra",
+    landmark: "Blue gate near the pharmacy",
+    amount: 57,
+    paymentMethod: "cash",
+    status: "assigned",
+    items: [
+      {
+        productId: "chicken-shawarma",
+        name: "Chicken Shawarma",
+        quantity: 1,
+        price: 35,
+        extras: [],
+      },
+      {
+        productId: "orange-soda",
+        name: "Orange Soda",
+        quantity: 1,
+        price: 10,
+        extras: [],
+      },
+    ],
+    time: "12:25",
+  },
+];
+
+export const supportMessages: SupportMessage[] = [
+  {
+    id: "s1",
+    name: "Ama Mensah",
+    email: "ama.m@example.com",
+    category: "delivery",
+    message: "Rider took a bit longer than expected yesterday.",
+    date: "2026-08-03",
+    status: "open",
+  },
+  {
+    id: "s2",
+    name: "Yaw Osei",
+    email: "yaw.o@example.com",
+    category: "suggestion",
+    message: "Please add spicy mayo as an extra option!",
+    date: "2026-08-02",
+    status: "replied",
+    reply: "Great idea — we're testing it this week. Thanks!",
+  },
+  {
+    id: "s3",
+    name: "Efua Darko",
+    email: "efua.d@example.com",
+    category: "food-quality",
+    message: "Last Mixed Shawarma was perfect. Keep it up.",
+    date: "2026-07-30",
+    status: "archived",
+  },
+  {
+    id: "s4",
+    name: "Kojo Boateng",
+    email: "kojo.b@example.com",
+    category: "bug",
+    message: "Cart quantity button lagged once on my phone.",
+    date: "2026-07-29",
+    status: "open",
+  },
+];
+
+export const faqs = [
+  {
+    id: "f1",
+    category: "Orders",
+    q: "How long does delivery take?",
+    a: "Most orders arrive in 25–35 minutes within our delivery radius.",
+  },
+  {
+    id: "f2",
+    category: "Orders",
+    q: "Can I customize my shawarma?",
+    a: "Yes — add Extra Cheese, Sausage, or Chicken on the product page.",
+  },
+  {
+    id: "f3",
+    category: "Delivery",
+    q: "What is the delivery fee?",
+    a: "GH₵12 for orders under GH₵150. Free delivery above GH₵150.",
+  },
+  {
+    id: "f4",
+    category: "Delivery",
+    q: "Where do you deliver?",
+    a: "We deliver within about 8 km of Osu Oxford Street, Accra.",
+  },
+  {
+    id: "f5",
+    category: "Payments",
+    q: "What payment methods do you accept?",
+    a: "Cash on Delivery is available now. Mobile Money and Card can be enabled by the restaurant when ready.",
+  },
+  {
+    id: "f6",
+    category: "Payments",
+    q: "How do loyalty points work?",
+    a: "Earn 1 point for every GH₵1 spent. Redeem points for vouchers.",
+  },
+  {
+    id: "f7",
+    category: "Account",
+    q: "How do I track my order?",
+    a: "Open Orders to see live status from Received to Delivered.",
+  },
+  {
+    id: "f8",
+    category: "Account",
+    q: "Can I reorder a past meal?",
+    a: "Yes — tap Order Again on any past order in your history.",
+  },
+  {
+    id: "f9",
+    category: "Orders",
+    q: "What are your opening hours?",
+    a: "We're open every day from 11 AM to 11 PM.",
+  },
+];
+
+export function getProduct(id: string) {
+  return products.find((p) => p.id === id);
+}
+
+export function productsByCategory(category?: string) {
+  if (!category || category === "all") return products;
+  return products.filter((p) => p.category === category);
+}
+
+export function productsByTag(tag: Product["tags"][number]) {
+  return products.filter((p) => p.tags.includes(tag));
+}
+
+export function getExtra(id: string) {
+  return extras.find((e) => e.id === id);
+}
+
+export const orderStatusLabel: Record<Order["status"], string> = {
+  received: "Order Received",
+  preparing: "Preparing",
+  "out-for-delivery": "Out for Delivery",
+  delivered: "Delivered",
+  cancelled: "Cancelled",
+};
+
+export const adminStats = {
+  todaySales: 2840,
+  ordersToday: 24,
+  pendingOrders: 5,
+  deliveredOrders: 16,
+  revenue: 18420,
+  popularProduct: "Chicken Shawarma",
+};

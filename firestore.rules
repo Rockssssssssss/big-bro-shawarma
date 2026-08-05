@@ -1,0 +1,37 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // TEMP: open rules for first launch / seeding.
+    // Tighten these after Auth is wired (admin-only writes).
+    match /{document=**} {
+      allow read, write: if true;
+    }
+
+    /*
+    // Production-ready sketch (enable after Firebase Auth):
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    function isAdmin() {
+      return isSignedIn() && request.auth.token.role == 'admin';
+    }
+    function isRider() {
+      return isSignedIn() && request.auth.token.role == 'rider';
+    }
+
+    match /products/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /settings/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /orders/{id} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isAdmin() || isRider();
+    }
+    */
+  }
+}

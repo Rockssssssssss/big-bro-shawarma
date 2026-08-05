@@ -1,0 +1,100 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #f97316;
+  --color-primary-dark: #ea580c;
+  --color-primary-light: #ffedd5;
+  --color-secondary: #4b2e2b;
+  --color-secondary-muted: #6b4c48;
+  --color-accent: #22c55e;
+  --color-accent-light: #dcfce7;
+  --color-bg: #fafafa;
+  --color-card: #ffffff;
+  --color-muted: #9ca3af;
+  --color-border: #e5e7eb;
+  --color-danger: #ef4444;
+  --color-danger-light: #fee2e2;
+
+  --font-sans: var(--font-poppins), ui-sans-serif, system-ui, sans-serif;
+
+  --radius-card: 1.25rem;
+  --radius-btn: 1.5rem;
+  --radius-pill: 9999px;
+
+  --shadow-card: 0 4px 20px rgba(75, 46, 43, 0.06);
+  --shadow-soft: 0 2px 12px rgba(75, 46, 43, 0.05);
+  --shadow-float: 0 8px 30px rgba(75, 46, 43, 0.1);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-secondary);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Hide scrollbar but keep scroll */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse-soft {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
+@keyframes spin-slow {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes progress-fill {
+  from {
+    width: 0%;
+  }
+  to {
+    width: 100%;
+  }
+}
+
+.animate-fade-up {
+  animation: fade-up 0.45s ease-out both;
+}
+
+.animate-pulse-soft {
+  animation: pulse-soft 1.6s ease-in-out infinite;
+}
+
+.animate-progress {
+  animation: progress-fill 2.2s ease-in-out forwards;
+}
