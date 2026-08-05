@@ -103,7 +103,7 @@ export function AddressSearch({
     }
   }
 
-  async function useMyLocation() {
+  async function handleLocateMe() {
     setLocating(true);
     setNearBanner(true);
     setError(null);
@@ -146,7 +146,7 @@ export function AddressSearch({
         />
         <button
           type="button"
-          onClick={() => void useMyLocation()}
+          onClick={() => void handleLocateMe()}
           className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-primary transition hover:bg-primary-light"
           aria-label="Use current location"
           title="Use current location"
@@ -188,7 +188,7 @@ export function AddressSearch({
           className="absolute z-40 mt-2 max-h-64 w-full overflow-y-auto rounded-2xl border border-border/70 bg-white py-1.5 shadow-float animate-fade-up"
         >
           {suggestions.map((s) => (
-            <li key={s.mapboxId} role="option">
+            <li key={s.mapboxId} role="option" aria-selected={false}>
               <button
                 type="button"
                 className="flex w-full items-start gap-2.5 px-3.5 py-2.5 text-left transition hover:bg-primary-light/60 active:bg-primary-light"
