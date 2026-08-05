@@ -14,50 +14,58 @@ const tabs = [
 
 export function BottomNav() {
   const pathname = usePathname();
+  const activeIndex = Math.max(
+    0,
+    tabs.findIndex((tab) => pathname.startsWith(tab.href)),
+  );
 
   return (
     <nav
       className={cn(
-        "shrink-0 border-t border-white/50 px-2 pb-[env(safe-area-inset-bottom)] pt-1.5",
-        "bg-white/55 shadow-[0_-10px_40px_rgba(75,46,43,0.08)]",
-        "backdrop-blur-2xl backdrop-saturate-150",
-        "supports-[backdrop-filter]:bg-white/45",
+        "w-full px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2",
+        "border-t border-white/40",
+        "bg-white/55 shadow-[0_-6px_24px_rgba(75,46,43,0.08)]",
+        "backdrop-blur-xl backdrop-saturate-150",
+        "supports-[backdrop-filter]:bg-white/40",
       )}
       aria-label="Primary"
     >
-      <div className="grid grid-cols-4">
-        {tabs.map(({ href, label, icon: Icon }) => {
-          const active = pathname.startsWith(href);
+      <div className="relative grid grid-cols-4 gap-1">
+        {/* Sliding active capsule */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-y-1 left-0 w-1/4 px-0.5 transition-transform duration-300 ease-[cubic-bezier(0.34,1.2,0.64,1)]"
+          style={{ transform: `translateX(${activeIndex * 100}%)` }}
+        >
+          <div
+            className="h-full w-full rounded-full shadow-[0_4px_14px_rgba(255,122,0,0.35)]"
+            style={{ backgroundColor: "#FF7A00" }}
+          />
+        </div>
+
+        {tabs.map(({ href, label, icon: Icon }, index) => {
+          const active = index === activeIndex;
           return (
             <Link
               key={href}
               href={href}
               className={cn(
-                "group flex flex-col items-center gap-0.5 py-2 text-[11px] font-medium transition-all duration-300 ease-out",
-                "active:scale-95",
-                active ? "text-primary" : "text-muted hover:text-secondary",
+                "relative z-10 flex flex-col items-center justify-center gap-0.5 rounded-full px-1 py-2.5",
+                "transition-colors duration-300 ease-out active:scale-[0.97]",
+                active ? "text-white" : "text-muted hover:text-secondary",
               )}
             >
-              <span
+              <Icon
                 className={cn(
-                  "flex items-center justify-center rounded-2xl transition-all duration-300 ease-out",
-                  active
-                    ? "scale-110 bg-primary-light/80 px-3 py-1 shadow-soft"
-                    : "scale-100 px-2 py-1",
+                  "h-5 w-5 transition-transform duration-300 ease-out",
+                  active && "scale-110",
                 )}
-              >
-                <Icon
-                  className={cn(
-                    "transition-all duration-300 ease-out",
-                    active ? "h-6 w-6" : "h-5 w-5",
-                  )}
-                  strokeWidth={active ? 2.45 : 1.8}
-                />
-              </span>
+                strokeWidth={active ? 2.4 : 1.8}
+              />
               <span
                 className={cn(
-                  "transition-all duration-300",
-                  active ? "text-[12px] font-semibold" : "font-medium",
+                  "text-[11px] transition-all duration-300 ease-out",
+                  active ? "font-semibold" : "font-medium",
                 )}
               >
                 {label}

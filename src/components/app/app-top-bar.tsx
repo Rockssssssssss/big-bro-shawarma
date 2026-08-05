@@ -14,12 +14,12 @@ interface AppTopBarProps {
 
 export function AppTopBar({ onMenu, menuOpen }: AppTopBarProps) {
   const { itemCount, bumpVersion } = useCart();
-  const [popping, setPopping] = useState(false);
+  const [justAdded, setJustAdded] = useState(false);
 
   useEffect(() => {
     if (bumpVersion === 0) return;
-    setPopping(true);
-    const t = window.setTimeout(() => setPopping(false), 420);
+    setJustAdded(true);
+    const t = window.setTimeout(() => setJustAdded(false), 520);
     return () => window.clearTimeout(t);
   }, [bumpVersion]);
 
@@ -38,16 +38,22 @@ export function AppTopBar({ onMenu, menuOpen }: AppTopBarProps) {
         href="/app/cart"
         className={cn(
           "relative flex h-10 w-10 items-center justify-center rounded-full text-secondary transition hover:bg-white",
-          popping && "animate-cart-pop",
+          justAdded && "animate-cart-bounce",
         )}
-        aria-label="Cart"
+        aria-label={`Cart${itemCount > 0 ? `, ${itemCount} items` : ""}`}
       >
-        <ShoppingBag className="h-5 w-5" />
+        <ShoppingBag
+          className={cn(
+            "h-5 w-5 transition-transform duration-300",
+            justAdded && "text-primary",
+          )}
+        />
         {itemCount > 0 && (
           <span
+            key={`badge-${bumpVersion}-${itemCount}`}
             className={cn(
-              "absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-white",
-              "animate-badge-attention",
+              "absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-white will-change-transform",
+              justAdded ? "animate-badge-enter" : "animate-badge-nudge",
             )}
           >
             {itemCount}

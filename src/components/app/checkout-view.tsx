@@ -189,7 +189,7 @@ export function CheckoutView() {
   }
 
   return (
-    <div className="pb-28 animate-fade-up">
+    <div className="pb-[13.5rem] animate-fade-up">
       <PageHeader title="Checkout" backHref="/app/cart" />
 
       <div className="space-y-5 px-4">
@@ -341,17 +341,6 @@ export function CheckoutView() {
           )}
         </section>
 
-        <section className="space-y-2 px-1 pb-2">
-          <div className="flex justify-between text-sm">
-            <span className="text-muted">Subtotal</span>
-            <span className="font-semibold">{formatCedi(subtotal)}</span>
-          </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-muted">Delivery</span>
-            <span className="font-semibold">{formatCedi(deliveryFee)}</span>
-          </div>
-        </section>
-
         {error && (
           <p className="rounded-xl bg-danger-light px-3 py-2 text-sm text-danger">
             {error}
@@ -359,22 +348,50 @@ export function CheckoutView() {
         )}
       </div>
 
-      <div className="fixed bottom-0 left-1/2 z-20 w-full max-w-md -translate-x-1/2 border-t border-white/50 bg-white/70 px-4 py-4 shadow-[0_-12px_40px_rgba(75,46,43,0.1)] backdrop-blur-2xl backdrop-saturate-150 supports-[backdrop-filter]:bg-white/55">
-        <Button
-          size="xl"
-          className="w-full justify-between px-5"
-          onClick={() => void placeOrder()}
-          disabled={
-            !addressSelected ||
-            enabledCount === 0 ||
-            !payments[payment] ||
-            loading ||
-            lines.length === 0
-          }
-        >
-          <span>{loading ? "Placing..." : "Place Order"}</span>
-          <span>{formatCedi(total)}</span>
-        </Button>
+      {/* Fixed liquid-glass checkout summary */}
+      <div className="pointer-events-none fixed bottom-0 left-1/2 z-30 w-full max-w-md -translate-x-1/2">
+        <div
+          aria-hidden
+          className="h-8 bg-gradient-to-b from-transparent to-white/50 backdrop-blur-[2px]"
+        />
+        <div className="pointer-events-auto border-t border-white/45 bg-white/65 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-16px_48px_rgba(75,46,43,0.14)] backdrop-blur-2xl backdrop-saturate-150 supports-[backdrop-filter]:bg-white/50">
+          <div className="mb-3 space-y-1.5 rounded-[18px] bg-white/85 px-3.5 py-3 shadow-soft backdrop-blur-md">
+            <div className="flex justify-between text-sm">
+              <span className="text-muted">Subtotal</span>
+              <span className="font-semibold text-secondary">
+                {formatCedi(subtotal)}
+              </span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-muted">Delivery Fee</span>
+              <span className="font-semibold text-secondary">
+                {formatCedi(deliveryFee)}
+              </span>
+            </div>
+            <div className="my-1.5 border-t border-border/80" />
+            <div className="flex justify-between">
+              <span className="font-bold text-secondary">Total</span>
+              <span className="text-lg font-bold text-secondary">
+                {formatCedi(total)}
+              </span>
+            </div>
+          </div>
+          <Button
+            size="xl"
+            className="w-full justify-between px-5"
+            onClick={() => void placeOrder()}
+            disabled={
+              !addressSelected ||
+              enabledCount === 0 ||
+              !payments[payment] ||
+              loading ||
+              lines.length === 0
+            }
+          >
+            <span>{loading ? "Placing..." : "Place Order"}</span>
+            <span>{formatCedi(total)}</span>
+          </Button>
+        </div>
       </div>
     </div>
   );

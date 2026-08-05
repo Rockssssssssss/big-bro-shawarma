@@ -47,7 +47,9 @@ export function HomeContent() {
     <div className="space-y-5 px-4 pb-6 animate-fade-up">
       <div>
         <p className="text-sm text-muted">
-          {greetingForHour()}, {firstName} 👋
+          {firstName
+            ? `${greetingForHour()}, ${firstName} 👋`
+            : `${greetingForHour()} 👋`}
         </p>
         <h2 className="mt-1 text-2xl font-bold tracking-tight text-secondary">
           What are you craving?

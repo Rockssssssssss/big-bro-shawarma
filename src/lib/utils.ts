@@ -61,10 +61,17 @@ export function greetingForHour(hour = new Date().getHours()): string {
   return "Good evening";
 }
 
-/** First word of a display name; falls back to full name if needed. */
-export function firstNameOf(fullName?: string | null, fallback = "there"): string {
+/** Greeting-safe first name: letters only, no trailing digits. */
+export function firstNameOf(fullName?: string | null): string | null {
   const trimmed = fullName?.trim();
-  if (!trimmed) return fallback;
-  const first = trimmed.split(/\s+/)[0];
-  return first || trimmed;
+  if (!trimmed) return null;
+
+  // Prefer the first word, then the first alphabetic run in the name
+  const firstWord = trimmed.split(/\s+/)[0] ?? "";
+  const fromWord = firstWord.replace(/\d+/g, "").match(/[A-Za-z]+/);
+  const match = fromWord ?? trimmed.match(/[A-Za-z]+/);
+  if (!match?.[0]) return null;
+
+  const name = match[0];
+  return name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
 }
