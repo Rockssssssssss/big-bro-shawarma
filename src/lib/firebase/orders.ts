@@ -40,6 +40,8 @@ export type CreateOrderInput = {
   customerPhone: string;
   address: string;
   landmark: string;
+  latitude?: number;
+  longitude?: number;
   items: OrderItem[];
   subtotal: number;
   deliveryFee: number;
@@ -61,6 +63,8 @@ export async function createOrder(input: CreateOrderInput): Promise<Order> {
     customerPhone: input.customerPhone,
     address: input.address,
     landmark: input.landmark,
+    latitude: input.latitude,
+    longitude: input.longitude,
     date,
     time,
     status: "received",

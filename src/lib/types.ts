@@ -75,6 +75,8 @@ export interface Order {
   customerPhone: string;
   address: string;
   landmark: string;
+  latitude?: number;
+  longitude?: number;
   date: string;
   time: string;
   status: OrderStatus;

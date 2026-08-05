@@ -13,7 +13,7 @@ import { ProductCard } from "./product-card";
 import { Button } from "@/components/ui/button";
 import { useCatalog } from "@/components/catalog-context";
 import { useAuth } from "@/components/auth-context";
-import { cn, greetingForHour } from "@/lib/utils";
+import { cn, greetingForHour, firstNameOf } from "@/lib/utils";
 
 const categories = [
   { id: "all", label: "All", Icon: AllIcon },
@@ -26,7 +26,7 @@ export function HomeContent() {
   const [category, setCategory] = useState<string>("all");
   const { productsByCategory, productsByTag, getProduct } = useCatalog();
   const { profile } = useAuth();
-  const firstName = (profile?.name || "there").split(" ")[0];
+  const firstName = firstNameOf(profile?.name);
 
   const list = useMemo(
     () => productsByCategory(category),

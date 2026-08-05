@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -8,17 +9,21 @@ import {
   Clock,
   CreditCard,
   MapPin,
-  Navigation,
   Smartphone,
 } from "lucide-react";
 import { PageHeader } from "./page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  MtnMomoLogo,
+  TelecelCashLogo,
+} from "@/components/icons/momo-logos";
 import { useAuth } from "@/components/auth-context";
 import { useCart } from "@/components/cart-context";
 import { useCatalog } from "@/components/catalog-context";
 import { createOrder } from "@/lib/firebase/orders";
 import { extras, restaurant } from "@/lib/data";
+import type { MapboxSelectedAddress } from "@/lib/mapbox";
 import type { OrderItem, PaymentMethod } from "@/lib/types";
 import {
   cn,
@@ -27,6 +32,21 @@ import {
   isValidGhanaPhone,
   normalizeGhanaPhone,
 } from "@/lib/utils";
+
+const AddressSearch = dynamic(
+  () =>
+    import("./address-search").then((m) => m.AddressSearch),
+  {
+    ssr: false,
+    loading: () => (
+      <Input
+        disabled
+        placeholder="Loading address search..."
+        className="bg-bg"
+      />
+    ),
+  },
+);
 
 const paymentMeta: {
   id: PaymentMethod;
@@ -43,7 +63,7 @@ const paymentMeta: {
   {
     id: "momo",
     title: "Mobile Money",
-    subtitle: "MTN · Telecel · AT",
+    subtitle: "MTN MoMo · Telecel Cash",
     icon: Smartphone,
   },
   {
@@ -59,7 +79,12 @@ export function CheckoutView() {
   const { profile, user, usingFirebase } = useAuth();
   const { lines, subtotal, deliveryFee, total, clear, lineTotal } = useCart();
   const { payments, getProduct } = useCatalog();
-  const [address, setAddress] = useState(restaurant.address);
+  const [address, setAddress] = useState("");
+  const [addressSelected, setAddressSelected] = useState(false);
+  const [coords, setCoords] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
   const [landmark, setLandmark] = useState("");
   const [phone, setPhone] = useState(
     normalizeGhanaPhone(profile?.phone ?? ""),
@@ -84,9 +109,22 @@ export function CheckoutView() {
     }
   }, [payments, payment]);
 
+  function handleAddressSelect(place: MapboxSelectedAddress) {
+    setAddress(place.fullAddress);
+    setCoords({ latitude: place.latitude, longitude: place.longitude });
+    setAddressSelected(true);
+    setError(null);
+  }
+
+  function handleAddressType(value: string) {
+    setAddress(value);
+    setAddressSelected(false);
+    setCoords(null);
+  }
+
   async function placeOrder() {
-    if (!address.trim()) {
-      setError("Please enter a delivery address.");
+    if (!addressSelected || !address.trim()) {
+      setError("Please select a delivery location.");
       return;
     }
     if (!isValidGhanaPhone(phone)) {
@@ -131,6 +169,8 @@ export function CheckoutView() {
           customerPhone: normalizeGhanaPhone(phone),
           address: address.trim(),
           landmark: landmark.trim(),
+          latitude: coords?.latitude,
+          longitude: coords?.longitude,
           items,
           subtotal,
           deliveryFee,
@@ -172,20 +212,14 @@ export function CheckoutView() {
             <MapPin className="h-4 w-4 text-primary" />
             <h2 className="font-semibold text-secondary">Delivery Address</h2>
           </div>
-          <Input
+
+          <AddressSearch
             value={address}
-            onChange={(e) => setAddress(e.target.value)}
-            placeholder="Search your delivery location"
-            className="bg-bg"
+            onChange={handleAddressType}
+            onSelect={handleAddressSelect}
+            selected={addressSelected}
           />
-          <button
-            type="button"
-            onClick={() => setAddress(restaurant.address)}
-            className="mt-2.5 flex items-center gap-1.5 text-sm font-medium text-primary"
-          >
-            <Navigation className="h-3.5 w-3.5" />
-            Use Current Location
-          </button>
+
           <label className="mt-3 block">
             <span className="mb-1.5 block text-xs font-medium text-muted">
               Phone
@@ -210,13 +244,13 @@ export function CheckoutView() {
             </span>
             <Input
               value={landmark}
-              maxLength={100}
-              onChange={(e) => setLandmark(e.target.value.slice(0, 100))}
-              placeholder="e.g. Blue gate near the pharmacy"
+              maxLength={120}
+              onChange={(e) => setLandmark(e.target.value.slice(0, 120))}
+              placeholder="Apartment, Landmark, House Number, Floor, Behind..."
               className="bg-bg"
             />
             <span className="mt-1 block text-right text-[10px] text-muted">
-              {landmark.length}/100
+              {landmark.length}/120
             </span>
           </label>
           <div className="mt-3 inline-flex items-center gap-2 rounded-full bg-bg px-3 py-2 text-sm text-secondary">
@@ -269,18 +303,25 @@ export function CheckoutView() {
                     >
                       <Icon className="h-5 w-5" />
                     </span>
-                    <span className="flex-1">
+                    <span className="flex-1 min-w-0">
                       <span className="block font-semibold text-secondary">
                         {title}
                       </span>
-                      <span className="text-xs text-muted">
-                        {available ? subtitle : "Unavailable for now"}
-                      </span>
+                      {id === "momo" && available ? (
+                        <span className="mt-1.5 flex items-center gap-2">
+                          <MtnMomoLogo className="h-7 w-7 shrink-0 rounded-lg shadow-soft" />
+                          <TelecelCashLogo className="h-7 w-7 shrink-0 rounded-lg shadow-soft" />
+                        </span>
+                      ) : (
+                        <span className="text-xs text-muted">
+                          {available ? subtitle : "Unavailable for now"}
+                        </span>
+                      )}
                     </span>
                     {available ? (
                       <span
                         className={cn(
-                          "flex h-6 w-6 items-center justify-center rounded-full border-2",
+                          "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2",
                           selected
                             ? "border-primary bg-primary text-white"
                             : "border-border",
@@ -318,13 +359,13 @@ export function CheckoutView() {
         )}
       </div>
 
-      <div className="fixed bottom-0 left-1/2 z-20 w-full max-w-md -translate-x-1/2 border-t border-border/60 bg-bg/95 px-4 py-4 backdrop-blur">
+      <div className="fixed bottom-0 left-1/2 z-20 w-full max-w-md -translate-x-1/2 border-t border-white/50 bg-white/70 px-4 py-4 shadow-[0_-12px_40px_rgba(75,46,43,0.1)] backdrop-blur-2xl backdrop-saturate-150 supports-[backdrop-filter]:bg-white/55">
         <Button
           size="xl"
           className="w-full justify-between px-5"
           onClick={() => void placeOrder()}
           disabled={
-            !address.trim() ||
+            !addressSelected ||
             enabledCount === 0 ||
             !payments[payment] ||
             loading ||

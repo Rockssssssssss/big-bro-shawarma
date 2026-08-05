@@ -62,7 +62,7 @@ const paymentMeta: {
   {
     id: "momo",
     title: "Mobile Money",
-    subtitle: "MTN · Telecel · AT",
+    subtitle: "MTN MoMo · Telecel Cash",
     icon: Smartphone,
   },
   {

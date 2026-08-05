@@ -48,10 +48,22 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         onMenu={() => setDrawerOpen((v) => !v)}
       />
       <AppDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
-      <main className="flex-1 overflow-y-auto no-scrollbar pb-4">
+      <main
+        className={
+          showBottom
+            ? "flex-1 overflow-y-auto no-scrollbar pb-[5.75rem]"
+            : "flex-1 overflow-y-auto no-scrollbar pb-4"
+        }
+      >
         {children}
       </main>
-      {showBottom && <BottomNav />}
+      {showBottom && (
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-30">
+          <div className="pointer-events-auto">
+            <BottomNav />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

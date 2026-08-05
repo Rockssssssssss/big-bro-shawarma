@@ -15,7 +15,7 @@ const poppins = Poppins({
 export const metadata: Metadata = {
   title: "Big Bro Shawarma — Fresh Shawarma Delivered Fast",
   description:
-    "Order premium flame-grilled shawarma from Big Bro Shawarma in Accra. Fast delivery, loyalty rewards, and mouthwatering combos.",
+    "Order premium flame-grilled shawarma from Big Bro Shawarma in Techiman. Fast delivery, loyalty rewards, and mouthwatering combos.",
 };
 
 export default function RootLayout({

@@ -24,7 +24,7 @@ export function CartView() {
   } = useCart();
 
   return (
-    <div className="pb-28 animate-fade-up">
+    <div className="pb-[11.5rem] animate-fade-up">
       <PageHeader title="Your Cart" backHref="/app/home" />
 
       {lines.length === 0 ? (
@@ -115,34 +115,33 @@ export function CartView() {
             })}
           </div>
 
-          <div className="mx-4 mt-4 space-y-2.5 rounded-[20px] bg-white p-4 shadow-card">
-            <div className="flex justify-between text-sm">
-              <span className="text-muted">Subtotal</span>
-              <span className="font-semibold text-secondary">
-                {formatCedi(subtotal)}
-              </span>
+          <div className="fixed bottom-0 left-1/2 z-20 w-full max-w-md -translate-x-1/2 border-t border-white/50 bg-white/70 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-12px_40px_rgba(75,46,43,0.1)] backdrop-blur-2xl backdrop-saturate-150 supports-[backdrop-filter]:bg-white/55">
+            <div className="mb-3 space-y-1.5 rounded-[18px] bg-white/90 px-3.5 py-3 shadow-soft">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted">Subtotal</span>
+                <span className="font-semibold text-secondary">
+                  {formatCedi(subtotal)}
+                </span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted">Delivery Fee</span>
+                <span className="font-semibold text-secondary">
+                  {formatCedi(deliveryFee)}
+                </span>
+              </div>
+              {amountToFreeDelivery > 0 && (
+                <p className="text-xs text-muted">
+                  Add {formatCedi(amountToFreeDelivery)} more for free delivery.
+                </p>
+              )}
+              <div className="my-1.5 border-t border-border/80" />
+              <div className="flex justify-between">
+                <span className="font-bold text-secondary">Total</span>
+                <span className="text-lg font-bold text-secondary">
+                  {formatCedi(total)}
+                </span>
+              </div>
             </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-muted">Delivery Fee</span>
-              <span className="font-semibold text-secondary">
-                {formatCedi(deliveryFee)}
-              </span>
-            </div>
-            {amountToFreeDelivery > 0 && (
-              <p className="text-xs text-muted">
-                Add {formatCedi(amountToFreeDelivery)} more for free delivery.
-              </p>
-            )}
-            <div className="my-2 border-t border-border" />
-            <div className="flex justify-between">
-              <span className="font-bold text-secondary">Total</span>
-              <span className="text-lg font-bold text-secondary">
-                {formatCedi(total)}
-              </span>
-            </div>
-          </div>
-
-          <div className="fixed bottom-0 left-1/2 z-20 w-full max-w-md -translate-x-1/2 border-t border-border/60 bg-bg/95 px-4 py-4 backdrop-blur">
             <Link href="/app/checkout">
               <Button size="xl" className="w-full justify-between px-5">
                 <span>Proceed to Checkout</span>

@@ -144,10 +144,10 @@ export const currentCustomer = {
 
 export const restaurant = {
   name: "Big Bro Shawarma",
-  address: "Osu Oxford Street, Accra",
-  phone: "+233 30 291 8844",
-  phones: ["+233 599 678 245", "+233 533 327 161"],
-  email: "hello@bigbroshawarma.com",
+  address: "Techiman - Tuobodom Main Taxi Station",
+  phone: "+233 59 967 8245",
+  phones: ["+233 59 967 8245"],
+  email: "bigbroshawarma09@gmail.com",
   website: "www.bigbroshawarma.com",
   hours: "Mon–Sun, 11 AM – 11 PM",
   deliveryEta: "25–35 min",
@@ -557,7 +557,7 @@ export const faqs = [
     id: "f4",
     category: "Delivery",
     q: "Where do you deliver?",
-    a: "We deliver within about 8 km of Osu Oxford Street, Accra.",
+    a: "We deliver within about 8 km of Techiman - Tuobodom Main Taxi Station.",
   },
   {
     id: "f5",

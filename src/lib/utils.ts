@@ -60,3 +60,11 @@ export function greetingForHour(hour = new Date().getHours()): string {
   if (hour < 17) return "Good afternoon";
   return "Good evening";
 }
+
+/** First word of a display name; falls back to full name if needed. */
+export function firstNameOf(fullName?: string | null, fallback = "there"): string {
+  const trimmed = fullName?.trim();
+  if (!trimmed) return fallback;
+  const first = trimmed.split(/\s+/)[0];
+  return first || trimmed;
+}

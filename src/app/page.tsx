@@ -159,7 +159,7 @@ export default function LandingPage() {
             Big Bro Shawarma
           </h2>
           <p className="mt-4 leading-relaxed text-muted">
-            We&apos;re a fast-growing shawarma kitchen serving Accra with
+            We&apos;re a fast-growing shawarma kitchen serving Techiman with
             flame-grilled wraps, generous portions, and delivery you can trust.
             From solo lunch combos to family boxes — Big Bro keeps it hot,
             fresh, and simple.
@@ -273,7 +273,7 @@ export default function LandingPage() {
         <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <Logo showText size="sm" />
           <p className="text-sm text-muted">
-            © {new Date().getFullYear()} Big Bro Shawarma. Accra, Ghana.
+            © {new Date().getFullYear()} Big Bro Shawarma. Techiman, Ghana.
           </p>
           <div className="flex gap-4 text-sm text-muted">
             <Link href="/admin" className="hover:text-primary">

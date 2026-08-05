@@ -15,6 +15,8 @@ import { useCatalog } from "@/components/catalog-context";
 interface CartContextValue {
   lines: CartLine[];
   itemCount: number;
+  /** Increments on each add — drives cart icon animation. */
+  bumpVersion: number;
   subtotal: number;
   deliveryFee: number;
   total: number;
@@ -51,6 +53,7 @@ const seed: CartLine[] = [
 export function CartProvider({ children }: { children: ReactNode }) {
   const { getProduct } = useCatalog();
   const [lines, setLines] = useState<CartLine[]>(seed);
+  const [bumpVersion, setBumpVersion] = useState(0);
 
   const lineTotal = useCallback(
     (line: CartLine) => {
@@ -73,6 +76,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         }
         return [...prev, { key, productId, quantity, extras: extrasIds }];
       });
+      setBumpVersion((v) => v + 1);
     },
     [],
   );
@@ -105,6 +109,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     return {
       lines,
       itemCount: lines.reduce((n, l) => n + l.quantity, 0),
+      bumpVersion,
       subtotal,
       deliveryFee,
       total: subtotal + deliveryFee,
@@ -115,7 +120,15 @@ export function CartProvider({ children }: { children: ReactNode }) {
       clear,
       lineTotal,
     };
-  }, [lines, addItem, updateQuantity, removeItem, clear, lineTotal]);
+  }, [
+    lines,
+    bumpVersion,
+    addItem,
+    updateQuantity,
+    removeItem,
+    clear,
+    lineTotal,
+  ]);
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }
