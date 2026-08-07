@@ -24,6 +24,7 @@ export const SETTINGS_DOCS = {
   payments: "payments",
   restaurant: "restaurant",
   business: "business",
+  home: "home",
 } as const;
 
 export type PaymentSettingsDoc = Record<PaymentMethod, boolean>;
@@ -45,6 +46,12 @@ export type RestaurantSettingsDoc = {
   email: string;
   website: string;
   deliveryEta: string;
+};
+
+export type HomeSettingsDoc = {
+  popularTodayIds: string[];
+  bestSellerIds: string[];
+  todaysSpecialId: string;
 };
 
 export type FirestoreProduct = Product;

@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect } from "react";
 import { Bike, Clock, Home, User } from "lucide-react";
+import { useAuth } from "@/components/auth-context";
 import { cn } from "@/lib/utils";
 
 const tabs = [
@@ -17,13 +19,36 @@ export default function RiderLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const { ready, user, isRider, usingFirebase } = useAuth();
 
-  if (pathname === "/rider/login") {
+  const isLoginPage = pathname === "/rider/login";
+
+  useEffect(() => {
+    if (isLoginPage || !ready || !usingFirebase) return;
+    if (!user || !isRider) {
+      router.replace("/rider/login");
+    }
+  }, [isLoginPage, ready, user, isRider, usingFirebase, router]);
+
+  if (isLoginPage) {
     return (
       <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col bg-bg">
         {children}
       </div>
     );
+  }
+
+  if (!ready) {
+    return (
+      <div className="flex min-h-dvh items-center justify-center bg-bg">
+        <p className="text-sm text-muted">Loading...</p>
+      </div>
+    );
+  }
+
+  if (usingFirebase && (!user || !isRider)) {
+    return null;
   }
 
   return (

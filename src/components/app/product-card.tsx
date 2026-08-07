@@ -3,12 +3,19 @@
 import Link from "next/link";
 import { Clock, Plus } from "lucide-react";
 import { useCart } from "@/components/cart-context";
+import { useCartToast } from "@/components/cart-toast-provider";
 import { SafeImage } from "@/components/safe-image";
 import type { Product } from "@/lib/types";
 import { formatCedi } from "@/lib/utils";
 
 export function ProductCard({ product }: { product: Product }) {
   const { addItem } = useCart();
+  const { showCartToast } = useCartToast();
+
+  function handleAdd() {
+    addItem(product.id);
+    showCartToast(product.category);
+  }
 
   return (
     <article className="relative flex gap-3 rounded-[20px] bg-white p-3 shadow-card">
@@ -26,10 +33,10 @@ export function ProductCard({ product }: { product: Product }) {
       </Link>
       <div className="min-w-0 flex-1 pr-8">
         <Link href={`/app/product/${product.id}`}>
-          <h3 className="truncate font-semibold text-secondary">
+          <h3 className="font-heading truncate text-secondary">
             {product.name}
           </h3>
-          <p className="mt-0.5 line-clamp-2 text-xs leading-relaxed text-muted">
+          <p className="font-body mt-0.5 line-clamp-2 text-xs leading-relaxed text-muted">
             {product.description}
           </p>
         </Link>
@@ -37,13 +44,13 @@ export function ProductCard({ product }: { product: Product }) {
           <Clock className="h-3.5 w-3.5" />
           {product.prepTime} min
         </div>
-        <p className="mt-1.5 font-bold text-secondary">
+        <p className="font-price mt-1.5 text-secondary">
           {formatCedi(product.price)}
         </p>
       </div>
       <button
         type="button"
-        onClick={() => addItem(product.id)}
+        onClick={handleAdd}
         className="absolute bottom-3 right-3 flex h-10 w-10 items-center justify-center rounded-full bg-primary text-white shadow-soft transition hover:bg-primary-dark active:scale-95"
         aria-label={`Add ${product.name}`}
       >

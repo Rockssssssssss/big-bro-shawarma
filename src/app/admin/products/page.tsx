@@ -56,18 +56,18 @@ export default function AdminProductsPage() {
     setOpen(true);
   }
 
-  async function handleSave(product: Product) {
+  async function handleSave(product: Product, imageFile?: File) {
     setSaving(true);
     try {
       if (mode === "create") {
-        await addProduct(product);
+        await addProduct(product, imageFile);
         flash(
           usingFirebase
             ? "Product added to Firebase"
             : "Product added — live on the menu",
         );
       } else {
-        await upsertProduct(product);
+        await upsertProduct(product, imageFile);
         flash(
           usingFirebase
             ? "Saved to Firebase — customer app synced"

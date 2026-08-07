@@ -167,7 +167,7 @@ export function AddressSearch({
 
       {!configured && (
         <p className="mt-1.5 text-[11px] text-muted">
-          Add NEXT_PUBLIC_MAPBOX_TOKEN to enable address search.
+          Type your full delivery address — at least 5 characters.
         </p>
       )}
 

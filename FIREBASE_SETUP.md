@@ -146,6 +146,34 @@ firebase deploy --only firestore:rules,storage
 1. Firebase Console → **Build → Authentication → Get started**
 2. Sign-in method → enable **Email/Password** → Save
 
+### Password reset email (optional branding)
+The app uses Firebase Auth `sendPasswordResetEmail` from `/app/forgot-password`.
+
+To brand the email in Firebase Console → **Authentication → Templates → Password reset**:
+
+**Subject**
+```
+Reset Your Big Bro Shawarma Password 🌯
+```
+
+**Body**
+```
+Hey! 👋
+
+Forgot your password? No worries—we’ve got you.
+
+Click the button below to create a new password and get back to your next delicious order.
+
+%LINK%
+
+If you didn’t request this, you can safely ignore this email.
+
+See you soon,
+The Big Bro Shawarma Team 🌯
+```
+
+(Keep Firebase’s action link / `%LINK%` placeholder so the reset button works.)
+
 ### Create staff accounts
 In Authentication → **Users → Add user**, create:
 

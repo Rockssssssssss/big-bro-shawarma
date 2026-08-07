@@ -26,10 +26,10 @@ function SiteHeader() {
           </a>
         </nav>
         <div className="flex items-center gap-2">
-          <Link href="/admin" className="hidden text-xs text-muted sm:inline">
+          <Link href="/admin/login" className="hidden text-xs text-muted sm:inline">
             Admin
           </Link>
-          <Link href="/rider" className="hidden text-xs text-muted sm:inline">
+          <Link href="/rider/login" className="hidden text-xs text-muted sm:inline">
             Rider
           </Link>
           <Link href="/app/welcome">
@@ -50,7 +50,7 @@ export default function LandingPage() {
       <section className="relative overflow-hidden">
         <div className="absolute inset-0">
           <Image
-            src="/food/hero-shawarma.jpg"
+            src="/food/hero.PNG"
             alt=""
             fill
             className="object-cover"
@@ -61,7 +61,7 @@ export default function LandingPage() {
         <div className="relative mx-auto grid max-w-6xl gap-10 px-4 py-20 sm:px-6 md:grid-cols-2 md:py-28">
           <div className="animate-fade-up">
             <p className="text-sm font-semibold tracking-[0.18em] text-primary">
-              BIG BRO SHAWARMA · ACCRA
+              BIG BRO SHAWARMA · Techiman
             </p>
             <h1 className="mt-4 text-4xl font-extrabold leading-tight text-white md:text-5xl">
               Fresh Shawarma
@@ -101,7 +101,7 @@ export default function LandingPage() {
             {
               title: "Shawarma",
               desc: "Chicken, beef & mixed wraps grilled to order.",
-              img: "/food/category-shawarma.jpg",
+              img: "/food/BnC.JPG",
               href: "/app/home",
             },
             {
@@ -113,7 +113,7 @@ export default function LandingPage() {
             {
               title: "Drinks",
               desc: "Ice-cold sodas & refreshers.",
-              img: "/food/category-drinks.jpg",
+              img: "/food/drinks.PNG",
               href: "/app/home",
             },
           ].map((cat) => (
@@ -145,7 +145,7 @@ export default function LandingPage() {
       <section id="about" className="mx-auto grid max-w-6xl gap-10 px-4 py-16 sm:px-6 md:grid-cols-2 md:items-center">
         <div className="relative aspect-square overflow-hidden rounded-[28px] shadow-card md:aspect-[4/5]">
           <Image
-            src="/food/mixed-shawarma.jpg"
+            src="/food/bbflyer.PNG"
             alt="About Big Bro"
             fill
             className="object-cover"
@@ -214,7 +214,7 @@ export default function LandingPage() {
               </div>
               <div className="relative w-2/5">
                 <Image
-                  src="/food/family-box.jpg"
+                  src="/food/free.jpg"
                   alt="Family Box"
                   fill
                   className="object-cover"
@@ -276,10 +276,10 @@ export default function LandingPage() {
             © {new Date().getFullYear()} Big Bro Shawarma. Techiman, Ghana.
           </p>
           <div className="flex gap-4 text-sm text-muted">
-            <Link href="/admin" className="hover:text-primary">
+            <Link href="/admin/login" className="hover:text-primary">
               Admin
             </Link>
-            <Link href="/rider" className="hover:text-primary">
+            <Link href="/rider/login" className="hover:text-primary">
               Rider
             </Link>
             <Link href="/app" className="hover:text-primary">

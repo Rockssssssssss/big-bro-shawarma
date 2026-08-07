@@ -16,6 +16,7 @@ import {
   type PaymentSettingsDoc,
   type BusinessSettingsDoc,
   type RestaurantSettingsDoc,
+  type HomeSettingsDoc,
 } from "@/lib/firebase/schema";
 import type { Product } from "@/lib/types";
 import {
@@ -40,6 +41,18 @@ export const defaultBusiness: BusinessSettingsDoc = {
   freeDeliveryMin: 150,
   hours: "Mon–Sun, 11 AM – 11 PM",
 };
+
+export function defaultHomeSettings(): HomeSettingsDoc {
+  return {
+    popularTodayIds: seedProducts
+      .filter((p) => p.tags.includes("popular"))
+      .map((p) => p.id),
+    bestSellerIds: seedProducts
+      .filter((p) => p.tags.includes("bestseller"))
+      .map((p) => p.id),
+    todaysSpecialId: "solo-combo",
+  };
+}
 
 function requireDb() {
   const db = getDb();
@@ -128,6 +141,36 @@ export async function fetchBusinessSettings(): Promise<BusinessSettingsDoc> {
   return { ...defaultBusiness, ...(snap.data() as BusinessSettingsDoc) };
 }
 
+export function subscribeHomeSettings(
+  onData: (settings: HomeSettingsDoc) => void,
+  onError?: (err: Error) => void,
+): Unsubscribe {
+  const db = requireDb();
+  const defaults = defaultHomeSettings();
+  return onSnapshot(
+    doc(db, COLLECTIONS.settings, SETTINGS_DOCS.home),
+    (snap) => {
+      if (!snap.exists()) {
+        onData(defaults);
+        return;
+      }
+      onData({ ...defaults, ...(snap.data() as HomeSettingsDoc) });
+    },
+    (err) => onError?.(err),
+  );
+}
+
+export async function saveHomeSettings(
+  settings: HomeSettingsDoc,
+): Promise<void> {
+  const db = requireDb();
+  await setDoc(
+    doc(db, COLLECTIONS.settings, SETTINGS_DOCS.home),
+    settings,
+    { merge: true },
+  );
+}
+
 /** One-time seed of menu + settings into Firestore */
 export async function seedFirestore(): Promise<{ products: number }> {
   if (!isFirebaseConfigured()) {
@@ -162,6 +205,11 @@ export async function seedFirestore(): Promise<{ products: number }> {
       website: seedRestaurant.website,
       deliveryEta: seedRestaurant.deliveryEta,
     } satisfies RestaurantSettingsDoc,
+    { merge: true },
+  );
+  batch.set(
+    doc(db, COLLECTIONS.settings, SETTINGS_DOCS.home),
+    defaultHomeSettings(),
     { merge: true },
   );
 

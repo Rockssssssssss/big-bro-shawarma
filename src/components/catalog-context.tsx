@@ -13,37 +13,46 @@ import { products as seedProducts } from "@/lib/data";
 import { isFirebaseConfigured } from "@/lib/firebase";
 import {
   defaultPayments,
+  defaultHomeSettings,
   deleteProduct as fbDeleteProduct,
   savePayments,
   saveProduct,
+  saveHomeSettings,
   seedFirestore,
   subscribePayments,
   subscribeProducts,
+  subscribeHomeSettings,
   type PaymentSettings,
 } from "@/lib/firebase/catalog";
+import type { HomeSettingsDoc } from "@/lib/firebase/schema";
 import { uploadProductImage } from "@/lib/firebase/storage";
 import type { PaymentMethod, Product } from "@/lib/types";
 
 const PRODUCTS_KEY = "bb-products";
 const PAYMENTS_KEY = "bb-payments";
+const HOME_KEY = "bb-home-settings";
 
 export type { PaymentSettings };
+export type HomeSettings = HomeSettingsDoc;
 
 interface CatalogContextValue {
   products: Product[];
   payments: PaymentSettings;
+  homeSettings: HomeSettings;
   ready: boolean;
   usingFirebase: boolean;
   firebaseError: string | null;
   getProduct: (id: string) => Product | undefined;
   productsByCategory: (category?: string) => Product[];
   productsByTag: (tag: Product["tags"][number]) => Product[];
-  upsertProduct: (product: Product) => Promise<void>;
-  addProduct: (product: Product) => Promise<void>;
+  productsByIds: (ids: string[]) => Product[];
+  upsertProduct: (product: Product, imageFile?: File) => Promise<void>;
+  addProduct: (product: Product, imageFile?: File) => Promise<void>;
   removeProduct: (id: string) => Promise<void>;
   toggleProductAvailable: (id: string) => Promise<void>;
   setPaymentEnabled: (method: PaymentMethod, enabled: boolean) => Promise<void>;
   setPayments: (next: PaymentSettings) => Promise<void>;
+  saveHomeSettings: (next: HomeSettings) => Promise<void>;
   resetCatalog: () => Promise<void>;
   seedDatabase: () => Promise<void>;
 }
@@ -61,11 +70,16 @@ function readJson<T>(key: string, fallback: T): T {
   }
 }
 
-async function prepareProductForSave(product: Product): Promise<Product> {
+async function prepareProductForSave(
+  product: Product,
+  imageFile?: File,
+): Promise<Product> {
   if (!isFirebaseConfigured()) return product;
 
   let image = product.image;
-  if (image.startsWith("data:")) {
+  if (imageFile) {
+    image = await uploadProductImage(product.id, imageFile);
+  } else if (image.startsWith("data:")) {
     image = await uploadProductImage(product.id, image);
   }
 
@@ -89,6 +103,9 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
   const [products, setProducts] = useState<Product[]>(seedProducts);
   const [payments, setPaymentsState] =
     useState<PaymentSettings>(defaultPayments);
+  const [homeSettings, setHomeSettingsState] = useState<HomeSettings>(
+    defaultHomeSettings(),
+  );
   const [ready, setReady] = useState(false);
   const [usingFirebase, setUsingFirebase] = useState(false);
   const [firebaseError, setFirebaseError] = useState<string | null>(null);
@@ -97,6 +114,7 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
     if (!isFirebaseConfigured()) {
       setProducts(readJson(PRODUCTS_KEY, seedProducts));
       setPaymentsState(readJson(PAYMENTS_KEY, defaultPayments));
+      setHomeSettingsState(readJson(HOME_KEY, defaultHomeSettings()));
       setUsingFirebase(false);
       setReady(true);
       return;
@@ -105,6 +123,7 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
     setUsingFirebase(true);
     let unsubProducts: (() => void) | undefined;
     let unsubPayments: (() => void) | undefined;
+    let unsubHome: (() => void) | undefined;
 
     try {
       unsubProducts = subscribeProducts(
@@ -129,11 +148,16 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
           setFirebaseError(err.message);
         },
       );
+      unsubHome = subscribeHomeSettings(
+        (h) => setHomeSettingsState(h),
+        (err) => console.error(err),
+      );
     } catch (err) {
       const message = err instanceof Error ? err.message : "Firebase error";
       setFirebaseError(message);
       setProducts(readJson(PRODUCTS_KEY, seedProducts));
       setPaymentsState(readJson(PAYMENTS_KEY, defaultPayments));
+      setHomeSettingsState(readJson(HOME_KEY, defaultHomeSettings()));
       setUsingFirebase(false);
       setReady(true);
     }
@@ -141,6 +165,7 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
     return () => {
       unsubProducts?.();
       unsubPayments?.();
+      unsubHome?.();
     };
   }, []);
 
@@ -154,6 +179,11 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
     if (!ready || usingFirebase) return;
     localStorage.setItem(PAYMENTS_KEY, JSON.stringify(payments));
   }, [payments, ready, usingFirebase]);
+
+  useEffect(() => {
+    if (!ready || usingFirebase) return;
+    localStorage.setItem(HOME_KEY, JSON.stringify(homeSettings));
+  }, [homeSettings, ready, usingFirebase]);
 
   const getProduct = useCallback(
     (id: string) => products.find((p) => p.id === id),
@@ -176,9 +206,17 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
     [products],
   );
 
+  const productsByIds = useCallback(
+    (ids: string[]) =>
+      ids
+        .map((id) => products.find((p) => p.id === id))
+        .filter((p): p is Product => !!p && p.available),
+    [products],
+  );
+
   const upsertProduct = useCallback(
-    async (product: Product) => {
-      const prepared = await prepareProductForSave(product);
+    async (product: Product, imageFile?: File) => {
+      const prepared = await prepareProductForSave(product, imageFile);
       if (usingFirebase && isFirebaseConfigured()) {
         await saveProduct(prepared);
         // realtime listener updates state
@@ -196,8 +234,8 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
   );
 
   const addProduct = useCallback(
-    async (product: Product) => {
-      await upsertProduct(product);
+    async (product: Product, imageFile?: File) => {
+      await upsertProduct(product, imageFile);
     },
     [upsertProduct],
   );
@@ -247,6 +285,17 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
     [usingFirebase],
   );
 
+  const persistHomeSettings = useCallback(
+    async (next: HomeSettings) => {
+      if (usingFirebase && isFirebaseConfigured()) {
+        await saveHomeSettings(next);
+      } else {
+        setHomeSettingsState(next);
+      }
+    },
+    [usingFirebase],
+  );
+
   const resetCatalog = useCallback(async () => {
     if (usingFirebase && isFirebaseConfigured()) {
       await seedFirestore();
@@ -254,8 +303,10 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
     }
     setProducts(seedProducts);
     setPaymentsState(defaultPayments);
+    setHomeSettingsState(defaultHomeSettings());
     localStorage.removeItem(PRODUCTS_KEY);
     localStorage.removeItem(PAYMENTS_KEY);
+    localStorage.removeItem(HOME_KEY);
   }, [usingFirebase]);
 
   const seedDatabase = useCallback(async () => {
@@ -269,36 +320,42 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
     () => ({
       products,
       payments,
+      homeSettings,
       ready,
       usingFirebase,
       firebaseError,
       getProduct,
       productsByCategory,
       productsByTag,
+      productsByIds,
       upsertProduct,
       addProduct,
       removeProduct,
       toggleProductAvailable,
       setPaymentEnabled,
       setPayments,
+      saveHomeSettings: persistHomeSettings,
       resetCatalog,
       seedDatabase,
     }),
     [
       products,
       payments,
+      homeSettings,
       ready,
       usingFirebase,
       firebaseError,
       getProduct,
       productsByCategory,
       productsByTag,
+      productsByIds,
       upsertProduct,
       addProduct,
       removeProduct,
       toggleProductAvailable,
       setPaymentEnabled,
       setPayments,
+      persistHomeSettings,
       resetCatalog,
       seedDatabase,
     ],

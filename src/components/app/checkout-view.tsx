@@ -22,6 +22,7 @@ import { useAuth } from "@/components/auth-context";
 import { useCart } from "@/components/cart-context";
 import { useCatalog } from "@/components/catalog-context";
 import { createOrder } from "@/lib/firebase/orders";
+import { isMapboxConfigured } from "@/lib/mapbox";
 import { extras, restaurant } from "@/lib/data";
 import type { MapboxSelectedAddress } from "@/lib/mapbox";
 import type { OrderItem, PaymentMethod } from "@/lib/types";
@@ -109,6 +110,21 @@ export function CheckoutView() {
     }
   }, [payments, payment]);
 
+  const isGuest = usingFirebase && !user;
+
+  const addressReady = isMapboxConfigured()
+    ? addressSelected && address.trim().length > 0
+    : address.trim().length >= 5;
+
+  const canPlaceOrder =
+    addressReady &&
+    isValidGhanaPhone(phone) &&
+    enabledCount > 0 &&
+    !!payments[payment] &&
+    lines.length > 0 &&
+    !loading &&
+    !isGuest;
+
   function handleAddressSelect(place: MapboxSelectedAddress) {
     setAddress(place.fullAddress);
     setCoords({ latitude: place.latitude, longitude: place.longitude });
@@ -118,13 +134,27 @@ export function CheckoutView() {
 
   function handleAddressType(value: string) {
     setAddress(value);
-    setAddressSelected(false);
-    setCoords(null);
+    if (isMapboxConfigured()) {
+      setAddressSelected(false);
+      setCoords(null);
+    } else {
+      setAddressSelected(value.trim().length >= 5);
+      setCoords(null);
+    }
   }
 
   async function placeOrder() {
-    if (!addressSelected || !address.trim()) {
-      setError("Please select a delivery location.");
+    if (isGuest) {
+      setError("Please log in to place your order.");
+      router.push("/app/login");
+      return;
+    }
+    if (!addressReady) {
+      setError(
+        isMapboxConfigured()
+          ? "Please select a delivery location from the suggestions."
+          : "Please enter your delivery address (at least 5 characters).",
+      );
       return;
     }
     if (!isValidGhanaPhone(phone)) {
@@ -137,10 +167,6 @@ export function CheckoutView() {
     }
     if (lines.length === 0) {
       setError("Your cart is empty");
-      return;
-    }
-    if (usingFirebase && !user) {
-      router.push("/app/login");
       return;
     }
 
@@ -382,15 +408,15 @@ export function CheckoutView() {
             size="xl"
             className="w-full justify-between px-5"
             onClick={() => void placeOrder()}
-            disabled={
-              !addressSelected ||
-              enabledCount === 0 ||
-              !payments[payment] ||
-              loading ||
-              lines.length === 0
-            }
+            disabled={!canPlaceOrder}
           >
-            <span>{loading ? "Placing..." : "Place Order"}</span>
+            <span>
+              {loading
+                ? "Placing..."
+                : isGuest
+                  ? "Log in to order"
+                  : "Place Order"}
+            </span>
             <span>{formatCedi(total)}</span>
           </Button>
         </div>

@@ -28,7 +28,7 @@ interface ProductEditorModalProps {
   product: Product | null;
   mode: "edit" | "create";
   onClose: () => void;
-  onSave: (product: Product) => void | Promise<void>;
+  onSave: (product: Product, imageFile?: File) => void | Promise<void>;
 }
 
 const emptyProduct = (): Product => ({
@@ -55,6 +55,8 @@ export function ProductEditorModal({
 }: ProductEditorModalProps) {
   const [draft, setDraft] = useState<Product>(emptyProduct());
   const [ingredientsText, setIngredientsText] = useState("");
+  const [pendingImageFile, setPendingImageFile] = useState<File | undefined>();
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -62,17 +64,29 @@ export function ProductEditorModal({
     const base = product ?? emptyProduct();
     setDraft({ ...base });
     setIngredientsText(base.ingredients.join(", "));
+    setPendingImageFile(undefined);
+    setPreviewUrl(null);
   }, [open, product]);
 
-  const canSave = useMemo(
-    () =>
+  useEffect(() => {
+    if (!previewUrl) return;
+    return () => URL.revokeObjectURL(previewUrl);
+  }, [previewUrl]);
+
+  const isDrink = draft.category === "drinks";
+
+  const canSave = useMemo(() => {
+    const hasBasics =
       draft.name.trim().length > 1 &&
       draft.description.trim().length > 1 &&
-      draft.price > 0 &&
+      draft.price > 0;
+    if (isDrink) return hasBasics;
+    return (
+      hasBasics &&
       draft.prepTime > 0 &&
-      !!draft.image,
-    [draft],
-  );
+      !!draft.image
+    );
+  }, [draft, isDrink]);
 
   if (!open) return null;
 
@@ -82,45 +96,56 @@ export function ProductEditorModal({
 
   function handleFile(file: File | undefined) {
     if (!file || !file.type.startsWith("image/")) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = String(reader.result);
-      setDraft((prev) => ({
-        ...prev,
-        image: dataUrl,
-        images: [dataUrl, ...(prev.images ?? []).filter((i) => i !== dataUrl)],
-      }));
-    };
-    reader.readAsDataURL(file);
+    setPendingImageFile(file);
+    const url = URL.createObjectURL(file);
+    setPreviewUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return url;
+    });
+    setDraft((prev) => ({
+      ...prev,
+      image: url,
+      images: [url, ...(prev.images ?? []).filter((i) => i !== url)],
+    }));
   }
 
   async function save() {
     if (!canSave) return;
-    const ingredients = ingredientsText
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
-    await onSave({
-      ...draft,
-      name: draft.name.trim(),
-      description: draft.description.trim(),
-      ingredients,
-      images: draft.images?.length ? draft.images : [draft.image],
-    });
+    const ingredients = isDrink
+      ? []
+      : ingredientsText
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean);
+    await onSave(
+      {
+        ...draft,
+        name: draft.name.trim(),
+        description: draft.description.trim(),
+        ingredients,
+        prepTime: isDrink ? 5 : draft.prepTime,
+        images: draft.images?.length ? draft.images : [draft.image],
+      },
+      pendingImageFile,
+    );
     onClose();
   }
 
+  const displayImage = previewUrl ?? draft.image;
+
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-secondary/50 p-3 sm:items-center">
-      <div
-        className="absolute inset-0"
-        onClick={onClose}
-        aria-hidden
-      />
+      <div className="absolute inset-0" onClick={onClose} aria-hidden />
       <div className="relative z-10 max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-[24px] bg-white p-5 shadow-float animate-fade-up">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-secondary">
-            {mode === "create" ? "Add Product" : "Edit Product"}
+          <h2 className="font-heading text-lg text-secondary">
+            {mode === "create"
+              ? isDrink
+                ? "Add Drink"
+                : "Add Product"
+              : isDrink
+                ? "Edit Drink"
+                : "Edit Product"}
           </h2>
           <button
             type="button"
@@ -137,7 +162,7 @@ export function ProductEditorModal({
             <Label>Image</Label>
             <div className="relative mt-1 aspect-[16/10] overflow-hidden rounded-2xl bg-bg">
               <SafeImage
-                src={draft.image}
+                src={displayImage}
                 alt={draft.name || "Product"}
                 fill
                 className="object-cover"
@@ -153,14 +178,18 @@ export function ProductEditorModal({
                 onClick={() => fileRef.current?.click()}
               >
                 <ImagePlus className="h-4 w-4" />
-                Upload image
+                Upload from phone
               </Button>
               <input
                 ref={fileRef}
                 type="file"
                 accept="image/*"
+                capture="environment"
                 className="hidden"
-                onChange={(e) => handleFile(e.target.files?.[0])}
+                onChange={(e) => {
+                  handleFile(e.target.files?.[0]);
+                  e.target.value = "";
+                }}
               />
             </div>
             <p className="mt-2 text-xs text-muted">Or pick from gallery</p>
@@ -169,16 +198,18 @@ export function ProductEditorModal({
                 <button
                   key={src}
                   type="button"
-                  onClick={() =>
+                  onClick={() => {
+                    setPendingImageFile(undefined);
+                    setPreviewUrl(null);
                     setDraft((prev) => ({
                       ...prev,
                       image: src,
                       images: [src, ...(prev.images ?? []).filter((i) => i !== src)],
-                    }))
-                  }
+                    }));
+                  }}
                   className={cn(
                     "relative h-14 w-14 shrink-0 overflow-hidden rounded-xl border-2",
-                    draft.image === src
+                    draft.image === src && !pendingImageFile
                       ? "border-primary"
                       : "border-transparent",
                   )}
@@ -195,7 +226,7 @@ export function ProductEditorModal({
               id="pname"
               value={draft.name}
               onChange={(e) => update("name", e.target.value)}
-              placeholder="Chicken Shawarma"
+              placeholder={isDrink ? "Orange Soda" : "Chicken Shawarma"}
             />
           </div>
 
@@ -207,11 +238,11 @@ export function ProductEditorModal({
               onChange={(e) => update("description", e.target.value)}
               rows={3}
               placeholder="Short tasty description"
-              className="w-full resize-none rounded-2xl border border-border bg-white px-4 py-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+              className="font-body w-full resize-none rounded-2xl border border-border bg-white px-4 py-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className={cn("grid gap-3", isDrink ? "grid-cols-1" : "grid-cols-2")}>
             <div>
               <Label htmlFor="pprice">Price (GH₵)</Label>
               <Input
@@ -223,16 +254,18 @@ export function ProductEditorModal({
                 onChange={(e) => update("price", Number(e.target.value))}
               />
             </div>
-            <div>
-              <Label htmlFor="ptime">Prep time (min)</Label>
-              <Input
-                id="ptime"
-                type="number"
-                min={1}
-                value={draft.prepTime || ""}
-                onChange={(e) => update("prepTime", Number(e.target.value))}
-              />
-            </div>
+            {!isDrink && (
+              <div>
+                <Label htmlFor="ptime">Prep time (min)</Label>
+                <Input
+                  id="ptime"
+                  type="number"
+                  min={1}
+                  value={draft.prepTime || ""}
+                  onChange={(e) => update("prepTime", Number(e.target.value))}
+                />
+              </div>
+            )}
           </div>
 
           <div>
@@ -249,15 +282,17 @@ export function ProductEditorModal({
             </select>
           </div>
 
-          <div>
-            <Label htmlFor="ping">Ingredients (comma separated)</Label>
-            <Input
-              id="ping"
-              value={ingredientsText}
-              onChange={(e) => setIngredientsText(e.target.value)}
-              placeholder="Chicken, garlic sauce, pita"
-            />
-          </div>
+          {!isDrink && (
+            <div>
+              <Label htmlFor="ping">Ingredients (comma separated)</Label>
+              <Input
+                id="ping"
+                value={ingredientsText}
+                onChange={(e) => setIngredientsText(e.target.value)}
+                placeholder="Chicken, garlic sauce, pita"
+              />
+            </div>
+          )}
 
           <div className="flex items-center justify-between rounded-2xl bg-bg px-4 py-3">
             <div>

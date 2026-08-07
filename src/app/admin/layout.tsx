@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect } from "react";
 import {
   BarChart3,
   Bell,
@@ -37,7 +38,8 @@ const nav = [
 
 function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { profile } = useAuth();
+  const router = useRouter();
+  const { profile, ready, user, isAdmin, usingFirebase } = useAuth();
   const displayName = profile?.name || "Admin";
   const initials = displayName
     .split(" ")
@@ -46,8 +48,29 @@ function AdminShell({ children }: { children: React.ReactNode }) {
     .slice(0, 2)
     .toUpperCase();
 
-  if (pathname === "/admin/login") {
+  const isLoginPage = pathname === "/admin/login";
+
+  useEffect(() => {
+    if (isLoginPage || !ready || !usingFirebase) return;
+    if (!user || !isAdmin) {
+      router.replace("/admin/login");
+    }
+  }, [isLoginPage, ready, user, isAdmin, usingFirebase, router]);
+
+  if (isLoginPage) {
     return <>{children}</>;
+  }
+
+  if (!ready) {
+    return (
+      <div className="flex min-h-dvh items-center justify-center bg-bg">
+        <p className="text-sm text-muted">Loading...</p>
+      </div>
+    );
+  }
+
+  if (usingFirebase && (!user || !isAdmin)) {
+    return null;
   }
 
   return (

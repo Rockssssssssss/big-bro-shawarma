@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Banknote, CreditCard, Smartphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -75,9 +75,12 @@ const paymentMeta: {
 
 export default function AdminSettingsPage() {
   const {
+    products,
     payments,
+    homeSettings,
     setPaymentEnabled,
     setPayments,
+    saveHomeSettings,
     resetCatalog,
     seedDatabase,
     usingFirebase,
@@ -88,13 +91,20 @@ export default function AdminSettingsPage() {
   const [fee, setFee] = useState(restaurant.deliveryFee);
   const [hours, setHours] = useState(restaurant.hours);
   const [saved, setSaved] = useState(false);
+  const [homeSaved, setHomeSaved] = useState(false);
   const [seeding, setSeeding] = useState(false);
   const [clearing, setClearing] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [localPayments, setLocalPayments] =
     useState<PaymentSettings | null>(null);
+  const [localHome, setLocalHome] = useState(homeSettings);
 
   const paymentState = localPayments ?? payments;
+  const homeState = localHome;
+
+  useEffect(() => {
+    setLocalHome(homeSettings);
+  }, [homeSettings]);
 
   async function togglePayment(id: PaymentMethod) {
     const next = { ...paymentState, [id]: !paymentState[id] };
@@ -102,6 +112,21 @@ export default function AdminSettingsPage() {
     setLocalPayments(next);
     await setPaymentEnabled(id, next[id]);
   }
+
+  function toggleHomeList(
+    key: "popularTodayIds" | "bestSellerIds",
+    productId: string,
+  ) {
+    setLocalHome((prev) => {
+      const list = prev[key];
+      const next = list.includes(productId)
+        ? list.filter((id) => id !== productId)
+        : [...list, productId];
+      return { ...prev, [key]: next };
+    });
+  }
+
+  const availableProducts = products.filter((p) => p.available);
 
   return (
     <div className="mx-auto max-w-2xl space-y-5 animate-fade-up">
@@ -182,6 +207,104 @@ export default function AdminSettingsPage() {
           }}
         >
           Use launch defaults (Cash only)
+        </Button>
+      </section>
+
+      <section className="space-y-4 rounded-[20px] bg-white p-5 shadow-card">
+        <div>
+          <h2 className="font-heading text-secondary">Home Screen</h2>
+          <p className="text-xs text-muted">
+            Control Today&apos;s Special, Popular Today, and Best Sellers on the
+            customer home page.
+          </p>
+        </div>
+
+        <div>
+          <Label htmlFor="todays-special">Today&apos;s Special</Label>
+          <select
+            id="todays-special"
+            value={homeState.todaysSpecialId}
+            onChange={(e) =>
+              setLocalHome((prev) => ({
+                ...prev,
+                todaysSpecialId: e.target.value,
+              }))
+            }
+            className="mt-1 h-12 w-full rounded-2xl border border-border bg-white px-4 text-sm outline-none focus:border-primary"
+          >
+            {availableProducts.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name} — GH₵{p.price}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <p className="font-semibold text-secondary">Popular Today</p>
+          <p className="mb-2 text-xs text-muted">
+            Tap products to add or remove from this section.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {availableProducts.map((p) => {
+              const selected = homeState.popularTodayIds.includes(p.id);
+              return (
+                <button
+                  key={`pop-${p.id}`}
+                  type="button"
+                  onClick={() => toggleHomeList("popularTodayIds", p.id)}
+                  className={cn(
+                    "rounded-full px-3 py-1.5 text-xs font-medium transition",
+                    selected
+                      ? "bg-primary text-white"
+                      : "bg-bg text-secondary hover:bg-primary-light",
+                  )}
+                >
+                  {p.name}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div>
+          <p className="font-semibold text-secondary">Best Sellers</p>
+          <p className="mb-2 text-xs text-muted">
+            Tap products to add or remove from this section.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {availableProducts.map((p) => {
+              const selected = homeState.bestSellerIds.includes(p.id);
+              return (
+                <button
+                  key={`bs-${p.id}`}
+                  type="button"
+                  onClick={() => toggleHomeList("bestSellerIds", p.id)}
+                  className={cn(
+                    "rounded-full px-3 py-1.5 text-xs font-medium transition",
+                    selected
+                      ? "bg-primary text-white"
+                      : "bg-bg text-secondary hover:bg-primary-light",
+                  )}
+                >
+                  {p.name}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <Button
+          size="sm"
+          className="w-full"
+          onClick={async () => {
+            await saveHomeSettings(homeState);
+            setHomeSaved(true);
+            setMsg("Home screen updated — live on customer app.");
+            setTimeout(() => setHomeSaved(false), 2000);
+          }}
+        >
+          {homeSaved ? "Home saved!" : "Save home screen"}
         </Button>
       </section>
 

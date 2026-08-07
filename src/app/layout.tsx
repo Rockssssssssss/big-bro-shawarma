@@ -1,7 +1,8 @@
-import { Poppins } from "next/font/google";
+import { Inter, Poppins } from "next/font/google";
 import type { Metadata } from "next";
 import { AuthProvider } from "@/components/auth-context";
 import { CartProvider } from "@/components/cart-context";
+import { CartToastProvider } from "@/components/cart-toast-provider";
 import { CatalogProvider } from "@/components/catalog-context";
 import "./globals.css";
 
@@ -9,6 +10,13 @@ const poppins = Poppins({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700", "800"],
   variable: "--font-poppins",
+  display: "swap",
+});
+
+const inter = Inter({
+  subsets: ["latin"],
+  weight: ["400", "500"],
+  variable: "--font-inter",
   display: "swap",
 });
 
@@ -25,10 +33,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${poppins.variable} font-sans antialiased`}>
+      <body className={`${poppins.variable} ${inter.variable} font-sans antialiased`}>
         <AuthProvider>
           <CatalogProvider>
-            <CartProvider>{children}</CartProvider>
+            <CartProvider>
+              <CartToastProvider>{children}</CartToastProvider>
+            </CartProvider>
           </CatalogProvider>
         </AuthProvider>
       </body>

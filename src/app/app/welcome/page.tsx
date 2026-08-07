@@ -8,7 +8,7 @@ export default function WelcomePage() {
     <div className="flex min-h-dvh flex-col bg-bg">
       <div className="relative h-[48vh] min-h-[280px] overflow-hidden">
         <Image
-          src="/food/chicken-shawarma.jpg"
+          src="/food/login.PNG"
           alt="Fresh shawarma"
           fill
           className="object-cover"

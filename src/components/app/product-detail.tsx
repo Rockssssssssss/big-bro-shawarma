@@ -5,6 +5,7 @@ import { Check, Minus, Plus } from "lucide-react";
 import { PageHeader } from "./page-header";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/components/cart-context";
+import { useCartToast } from "@/components/cart-toast-provider";
 import { SafeImage } from "@/components/safe-image";
 import { extras } from "@/lib/data";
 import type { Product } from "@/lib/types";
@@ -12,6 +13,7 @@ import { cn, formatCedi } from "@/lib/utils";
 
 export function ProductDetail({ product }: { product: Product }) {
   const { addItem } = useCart();
+  const { showCartToast } = useCartToast();
   const [qty, setQty] = useState(1);
   const [selected, setSelected] = useState<string[]>([]);
   const [imgIndex, setImgIndex] = useState(0);
@@ -37,6 +39,7 @@ export function ProductDetail({ product }: { product: Product }) {
 
   function handleAdd() {
     addItem(product.id, qty, selected);
+    showCartToast(product.category);
     setAdded(true);
     setTimeout(() => setAdded(false), 1600);
   }

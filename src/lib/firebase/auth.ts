@@ -1,6 +1,7 @@
 import {
   createUserWithEmailAndPassword,
   onAuthStateChanged,
+  sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signOut as fbSignOut,
   updateProfile,
@@ -60,11 +61,15 @@ export function resolveRole(email: string): UserRole {
   return "customer";
 }
 
+function authErrorCode(err: unknown): string | undefined {
+  const raw = err instanceof Error ? err.message : String(err);
+  return raw.match(/\(auth\/([^)]+)\)/)?.[1];
+}
+
 /** Human-readable Firebase Auth errors for customers and staff. */
 export function formatAuthError(err: unknown): string {
   const raw = err instanceof Error ? err.message : String(err);
-  const codeMatch = raw.match(/\(auth\/([^)]+)\)/);
-  const code = codeMatch?.[1];
+  const code = authErrorCode(err);
 
   switch (code) {
     case "invalid-credential":
@@ -93,6 +98,38 @@ export function formatAuthError(err: unknown): string {
           .trim() || "Something went wrong. Please try again."
       );
   }
+}
+
+/** Friendly errors for password reset — never exposes Firebase codes. */
+export function formatPasswordResetError(err: unknown): string {
+  const code = authErrorCode(err);
+
+  switch (code) {
+    case "invalid-email":
+    case "missing-email":
+      return "Please enter a valid email address.";
+    case "too-many-requests":
+      return "Too many requests. Please wait a minute and try again.";
+    case "network-request-failed":
+      return "Network error. Check your internet connection and try again.";
+    case "user-disabled":
+      return "This account has been disabled. Contact support.";
+    default:
+      return "Could not send reset link. Please try again.";
+  }
+}
+
+/**
+ * Sends Firebase Auth password reset email.
+ * Does not write to Firestore or change user records.
+ */
+export async function sendPasswordReset(email: string): Promise<void> {
+  const trimmed = email.trim().toLowerCase();
+  if (!trimmed || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+    throw new Error("Firebase: Error (auth/invalid-email).");
+  }
+  const auth = requireAuth();
+  await sendPasswordResetEmail(auth, trimmed);
 }
 
 function requireAuth() {
