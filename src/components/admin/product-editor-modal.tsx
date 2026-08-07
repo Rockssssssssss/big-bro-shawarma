@@ -10,17 +10,24 @@ import type { Category, Product } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const GALLERY = [
-  "/food/chicken-shawarma.jpg",
-  "/food/beef-shawarma.jpg",
-  "/food/mixed-shawarma.jpg",
-  "/food/family-box.jpg",
-  "/food/solo-combo.jpg",
-  "/food/orange-soda.jpg",
-  "/food/combo-meal.jpg",
-  "/food/hero-shawarma.jpg",
-  "/food/category-shawarma.jpg",
-  "/food/category-packages.jpg",
-  "/food/category-drinks.jpg",
+  "/food/bbflyer.PNG",
+  "/food/BnC.JPG",
+  "/food/BnC2.PNG",
+  "/food/BnS.PNG",
+  "/food/C.PNG",
+  "/food/CnS.JPG",
+  "/food/CnS2.JPG",
+  "/food/CnS3.PNG",
+  "/food/CnS4.PNG",
+  "/food/IMG_1057.JPG",
+  "/food/IMG_1061.JPG",
+  "/food/IMG_1063.JPG",
+  "/food/IMG_1064.JPG",
+  "/food/IMG_1065.JPG",
+  "/food/IMG_1066.JPG",
+  "/food/IMG_1067.JPG",
+  "/food/Ls.PNG",
+  "/food/Ls2.PNG",
 ];
 
 interface ProductEditorModalProps {
