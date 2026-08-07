@@ -76,19 +76,23 @@ async function prepareProductForSave(
 ): Promise<Product> {
   if (!isFirebaseConfigured()) return product;
 
+  const needsUpload = (src: string) =>
+    src.startsWith("data:") || src.startsWith("blob:");
+
   let image = product.image;
   if (imageFile) {
     image = await uploadProductImage(product.id, imageFile);
-  } else if (image.startsWith("data:")) {
+  } else if (needsUpload(image)) {
     image = await uploadProductImage(product.id, image);
   }
 
   const images = await Promise.all(
     (product.images ?? [product.image]).map(async (img) => {
-      if (img.startsWith("data:")) {
+      if (img === product.image) return image;
+      if (needsUpload(img)) {
         return uploadProductImage(product.id, img);
       }
-      return img === product.image ? image : img;
+      return img;
     }),
   );
 

@@ -23,24 +23,53 @@ export async function uploadProductImage(
       // Already a public path — keep as-is (no upload)
       return source;
     }
-    if (!source.startsWith("data:")) {
+    if (source.startsWith("http://") || source.startsWith("https://")) {
       // Remote URL — keep as-is
       return source;
     }
+    // data: or blob: — upload bytes
     const res = await fetch(source);
     blob = await res.blob();
-    const match = source.match(/^data:image\/(\w+);/);
-    if (match) ext = match[1] === "jpeg" ? "jpg" : match[1];
+    if (source.startsWith("data:")) {
+      const match = source.match(/^data:image\/([\w+.-]+);/);
+      if (match) {
+        const raw = match[1].toLowerCase().replace("jpeg", "jpg");
+        ext = raw.includes("png") ? "png" : raw.includes("webp") ? "webp" : "jpg";
+      }
+    } else {
+      ext = blob.type.includes("png")
+        ? "png"
+        : blob.type.includes("webp")
+          ? "webp"
+          : "jpg";
+    }
   } else {
     blob = source;
     const parts = source.name.split(".");
-    ext = parts[parts.length - 1] || "jpg";
+    const fromName = parts.length > 1 ? parts[parts.length - 1].toLowerCase() : "";
+    ext =
+      fromName === "jpeg" || fromName === "jpg"
+        ? "jpg"
+        : fromName === "png" || fromName === "webp"
+          ? fromName
+          : blob.type.includes("png")
+            ? "png"
+            : blob.type.includes("webp")
+              ? "webp"
+              : "jpg";
   }
+
+  const contentType =
+    blob.type && blob.type.startsWith("image/")
+      ? blob.type
+      : ext === "png"
+        ? "image/png"
+        : ext === "webp"
+          ? "image/webp"
+          : "image/jpeg";
 
   const path = `products/${productId}/${Date.now()}.${ext}`;
   const storageRef = ref(storage, path);
-  await uploadBytes(storageRef, blob, {
-    contentType: blob.type || `image/${ext}`,
-  });
+  await uploadBytes(storageRef, blob, { contentType });
   return getDownloadURL(storageRef);
 }

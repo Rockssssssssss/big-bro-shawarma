@@ -76,6 +76,7 @@ export default function AdminProductsPage() {
       }
     } catch (err) {
       flash(err instanceof Error ? err.message : "Save failed");
+      throw err;
     } finally {
       setSaving(false);
     }

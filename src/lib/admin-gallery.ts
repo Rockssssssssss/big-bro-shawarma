@@ -1,0 +1,35 @@
+/**
+ * All product images available in /public/food for the admin picker.
+ * Keep this list in sync when files are added to public/food.
+ */
+export const ADMIN_FOOD_GALLERY = [
+  "/food/B.PNG",
+  "/food/bbflyer.PNG",
+  "/food/BnC.JPG",
+  "/food/BnC2.PNG",
+  "/food/Bs.PNG",
+  "/food/C.PNG",
+  "/food/category-packages.jpg",
+  "/food/CnS.JPG",
+  "/food/CnS2.JPG",
+  "/food/CnS3.PNG",
+  "/food/CnS4.PNG",
+  "/food/drinks.png",
+  "/food/free.jpg",
+  "/food/hero.PNG",
+  "/food/hero2.PNG",
+  "/food/hero3.PNG",
+  "/food/hero4.PNG",
+  "/food/hero5.PNG",
+  "/food/IMG_1057.JPG",
+  "/food/IMG_1061.JPG",
+  "/food/IMG_1062.JPG",
+  "/food/IMG_1063.JPG",
+  "/food/IMG_1064.JPG",
+  "/food/IMG_1065.JPG",
+  "/food/IMG_1066.JPG",
+  "/food/IMG_1067.JPG",
+  "/food/login.PNG",
+  "/food/Ls.PNG",
+  "/food/Ls2.PNG",
+] as const;

@@ -1,34 +1,18 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { ImagePlus, X } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { ImagePlus, Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SafeImage } from "@/components/safe-image";
+import { ADMIN_FOOD_GALLERY } from "@/lib/admin-gallery";
+import {
+  isLikelyImageFile,
+  prepareImageForUpload,
+} from "@/lib/image-file";
 import type { Category, Product } from "@/lib/types";
 import { cn } from "@/lib/utils";
-
-const GALLERY = [
-  "/food/bbflyer.PNG",
-  "/food/BnC.JPG",
-  "/food/BnC2.PNG",
-  "/food/BnS.PNG",
-  "/food/C.PNG",
-  "/food/CnS.JPG",
-  "/food/CnS2.JPG",
-  "/food/CnS3.PNG",
-  "/food/CnS4.PNG",
-  "/food/IMG_1057.JPG",
-  "/food/IMG_1061.JPG",
-  "/food/IMG_1063.JPG",
-  "/food/IMG_1064.JPG",
-  "/food/IMG_1065.JPG",
-  "/food/IMG_1066.JPG",
-  "/food/IMG_1067.JPG",
-  "/food/Ls.PNG",
-  "/food/Ls2.PNG",
-];
 
 interface ProductEditorModalProps {
   open: boolean;
@@ -64,7 +48,11 @@ export function ProductEditorModal({
   const [ingredientsText, setIngredientsText] = useState("");
   const [pendingImageFile, setPendingImageFile] = useState<File | undefined>();
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
+  const [picking, setPicking] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [gallery, setGallery] = useState<string[]>([...ADMIN_FOOD_GALLERY]);
+  const [galleryLoading, setGalleryLoading] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -73,7 +61,33 @@ export function ProductEditorModal({
     setIngredientsText(base.ingredients.join(", "));
     setPendingImageFile(undefined);
     setPreviewUrl(null);
+    setPicking(false);
+    setSaving(false);
+    setError(null);
   }, [open, product]);
+
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    setGalleryLoading(true);
+    fetch("/api/admin/gallery")
+      .then(async (res) => {
+        const data = (await res.json()) as { images?: string[] };
+        if (cancelled) return;
+        if (Array.isArray(data.images) && data.images.length > 0) {
+          setGallery(data.images);
+        }
+      })
+      .catch(() => {
+        // Keep fallback list from ADMIN_FOOD_GALLERY
+      })
+      .finally(() => {
+        if (!cancelled) setGalleryLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
 
   useEffect(() => {
     if (!previewUrl) return;
@@ -101,48 +115,70 @@ export function ProductEditorModal({
     setDraft((prev) => ({ ...prev, [key]: value }));
   }
 
-  function handleFile(file: File | undefined) {
-    if (!file || !file.type.startsWith("image/")) return;
-    setPendingImageFile(file);
-    const url = URL.createObjectURL(file);
-    setPreviewUrl((prev) => {
-      if (prev) URL.revokeObjectURL(prev);
-      return url;
-    });
-    setDraft((prev) => ({
-      ...prev,
-      image: url,
-      images: [url, ...(prev.images ?? []).filter((i) => i !== url)],
-    }));
+  async function handleFile(file: File | undefined) {
+    if (!file) return;
+    setError(null);
+    if (!isLikelyImageFile(file)) {
+      setError("Please choose a photo (JPG, PNG, or WebP)");
+      return;
+    }
+
+    setPicking(true);
+    try {
+      const prepared = await prepareImageForUpload(file);
+      setPendingImageFile(prepared);
+      const url = URL.createObjectURL(prepared);
+      setPreviewUrl((prev) => {
+        if (prev) URL.revokeObjectURL(prev);
+        return url;
+      });
+      setDraft((prev) => ({
+        ...prev,
+        image: url,
+        images: [url, ...(prev.images ?? []).filter((i) => i !== url)],
+      }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not read that photo");
+    } finally {
+      setPicking(false);
+    }
   }
 
   async function save() {
-    if (!canSave) return;
-    const ingredients = isDrink
-      ? []
-      : ingredientsText
-          .split(",")
-          .map((s) => s.trim())
-          .filter(Boolean);
-    await onSave(
-      {
-        ...draft,
-        name: draft.name.trim(),
-        description: draft.description.trim(),
-        ingredients,
-        prepTime: isDrink ? 5 : draft.prepTime,
-        images: draft.images?.length ? draft.images : [draft.image],
-      },
-      pendingImageFile,
-    );
-    onClose();
+    if (!canSave || saving) return;
+    setError(null);
+    setSaving(true);
+    try {
+      const ingredients = isDrink
+        ? []
+        : ingredientsText
+            .split(",")
+            .map((s) => s.trim())
+            .filter(Boolean);
+      await onSave(
+        {
+          ...draft,
+          name: draft.name.trim(),
+          description: draft.description.trim(),
+          ingredients,
+          prepTime: isDrink ? 5 : draft.prepTime,
+          images: draft.images?.length ? draft.images : [draft.image],
+        },
+        pendingImageFile,
+      );
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Save failed — try again");
+    } finally {
+      setSaving(false);
+    }
   }
 
   const displayImage = previewUrl ?? draft.image;
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-secondary/50 p-3 sm:items-center">
-      <div className="absolute inset-0" onClick={onClose} aria-hidden />
+      <div className="absolute inset-0" onClick={saving ? undefined : onClose} aria-hidden />
       <div className="relative z-10 max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-[24px] bg-white p-5 shadow-float animate-fade-up">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="font-heading text-lg text-secondary">
@@ -157,7 +193,8 @@ export function ProductEditorModal({
           <button
             type="button"
             onClick={onClose}
-            className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-bg"
+            disabled={saving}
+            className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-bg disabled:opacity-50"
             aria-label="Close"
           >
             <X className="h-5 w-5" />
@@ -175,55 +212,82 @@ export function ProductEditorModal({
                 className="object-cover"
                 sizes="480px"
               />
+              {picking && (
+                <div className="absolute inset-0 flex items-center justify-center bg-secondary/40">
+                  <Loader2 className="h-8 w-8 animate-spin text-white" />
+                </div>
+              )}
             </div>
             <div className="mt-2 flex flex-wrap gap-2">
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                className="gap-1.5"
-                onClick={() => fileRef.current?.click()}
+              {/*
+                Native <label htmlFor> opens the picker more reliably on phones
+                than a JS .click() on a display:none input. No capture= attribute
+                so Android/iOS offer Gallery + Camera + Files.
+              */}
+              <label
+                htmlFor="product-image-upload"
+                className={cn(
+                  "inline-flex h-9 cursor-pointer items-center justify-center gap-1.5 rounded-full border border-border bg-white px-3.5 text-sm font-semibold text-secondary shadow-soft transition hover:bg-bg",
+                  (picking || saving) && "pointer-events-none opacity-60",
+                )}
               >
-                <ImagePlus className="h-4 w-4" />
-                Upload from phone
-              </Button>
+                {picking ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <ImagePlus className="h-4 w-4" />
+                )}
+                {picking ? "Preparing…" : "Choose photo"}
+              </label>
               <input
-                ref={fileRef}
+                id="product-image-upload"
                 type="file"
-                accept="image/*"
-                capture="environment"
-                className="hidden"
+                accept="image/jpeg,image/png,image/webp,image/heic,image/heif,image/*"
+                className="sr-only"
+                disabled={picking || saving}
                 onChange={(e) => {
-                  handleFile(e.target.files?.[0]);
+                  void handleFile(e.target.files?.[0]);
                   e.target.value = "";
                 }}
               />
             </div>
-            <p className="mt-2 text-xs text-muted">Or pick from gallery</p>
-            <div className="mt-2 flex gap-2 overflow-x-auto no-scrollbar pb-1">
-              {GALLERY.map((src) => (
-                <button
-                  key={src}
-                  type="button"
-                  onClick={() => {
-                    setPendingImageFile(undefined);
-                    setPreviewUrl(null);
-                    setDraft((prev) => ({
-                      ...prev,
-                      image: src,
-                      images: [src, ...(prev.images ?? []).filter((i) => i !== src)],
-                    }));
-                  }}
-                  className={cn(
-                    "relative h-14 w-14 shrink-0 overflow-hidden rounded-xl border-2",
-                    draft.image === src && !pendingImageFile
-                      ? "border-primary"
-                      : "border-transparent",
-                  )}
-                >
-                  <SafeImage src={src} alt="" fill className="object-cover" sizes="56px" />
-                </button>
-              ))}
+            <p className="mt-2 text-xs text-muted">
+              Opens your gallery (or camera). Large photos are compressed before
+              upload.
+            </p>
+            <p className="mt-2 text-xs text-muted">
+              Or pick from site gallery
+              {galleryLoading
+                ? "…"
+                : ` (${gallery.length} photos — all files in /food)`}
+            </p>
+            <div className="mt-2 max-h-64 overflow-y-auto rounded-2xl border border-border bg-bg p-2">
+              <div className="grid grid-cols-4 gap-2 sm:grid-cols-5">
+                {gallery.map((src) => (
+                  <button
+                    key={src}
+                    type="button"
+                    disabled={saving}
+                    onClick={() => {
+                      setPendingImageFile(undefined);
+                      setPreviewUrl(null);
+                      setError(null);
+                      setDraft((prev) => ({
+                        ...prev,
+                        image: src,
+                        images: [src, ...(prev.images ?? []).filter((i) => i !== src)],
+                      }));
+                    }}
+                    className={cn(
+                      "relative aspect-square overflow-hidden rounded-xl border-2",
+                      draft.image === src && !pendingImageFile
+                        ? "border-primary"
+                        : "border-transparent",
+                    )}
+                  >
+                    <SafeImage src={src} alt="" fill className="object-cover" sizes="80px" />
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
@@ -234,6 +298,7 @@ export function ProductEditorModal({
               value={draft.name}
               onChange={(e) => update("name", e.target.value)}
               placeholder={isDrink ? "Orange Soda" : "Chicken Shawarma"}
+              disabled={saving}
             />
           </div>
 
@@ -245,7 +310,8 @@ export function ProductEditorModal({
               onChange={(e) => update("description", e.target.value)}
               rows={3}
               placeholder="Short tasty description"
-              className="font-body w-full resize-none rounded-2xl border border-border bg-white px-4 py-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+              disabled={saving}
+              className="font-body w-full resize-none rounded-2xl border border-border bg-white px-4 py-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:opacity-60"
             />
           </div>
 
@@ -259,6 +325,7 @@ export function ProductEditorModal({
                 step={0.5}
                 value={draft.price || ""}
                 onChange={(e) => update("price", Number(e.target.value))}
+                disabled={saving}
               />
             </div>
             {!isDrink && (
@@ -270,6 +337,7 @@ export function ProductEditorModal({
                   min={1}
                   value={draft.prepTime || ""}
                   onChange={(e) => update("prepTime", Number(e.target.value))}
+                  disabled={saving}
                 />
               </div>
             )}
@@ -281,7 +349,8 @@ export function ProductEditorModal({
               id="pcat"
               value={draft.category}
               onChange={(e) => update("category", e.target.value as Category)}
-              className="h-12 w-full rounded-2xl border border-border bg-white px-4 text-sm outline-none focus:border-primary"
+              disabled={saving}
+              className="h-12 w-full rounded-2xl border border-border bg-white px-4 text-sm outline-none focus:border-primary disabled:opacity-60"
             >
               <option value="shawarma">Shawarma</option>
               <option value="packages">Packages</option>
@@ -297,6 +366,7 @@ export function ProductEditorModal({
                 value={ingredientsText}
                 onChange={(e) => setIngredientsText(e.target.value)}
                 placeholder="Chicken, garlic sauce, pita"
+                disabled={saving}
               />
             </div>
           )}
@@ -308,6 +378,7 @@ export function ProductEditorModal({
             </div>
             <button
               type="button"
+              disabled={saving}
               onClick={() => update("available", !draft.available)}
               className={cn(
                 "relative h-7 w-12 rounded-full transition",
@@ -322,14 +393,27 @@ export function ProductEditorModal({
               />
             </button>
           </div>
+
+          {error && (
+            <p className="rounded-2xl bg-danger/10 px-4 py-3 text-sm font-medium text-danger">
+              {error}
+            </p>
+          )}
         </div>
 
         <div className="mt-5 flex gap-2">
-          <Button variant="outline" className="flex-1" onClick={onClose}>
+          <Button variant="outline" className="flex-1" onClick={onClose} disabled={saving}>
             Cancel
           </Button>
-          <Button className="flex-1" disabled={!canSave} onClick={save}>
-            Save changes
+          <Button className="flex-1" disabled={!canSave || saving || picking} onClick={save}>
+            {saving ? (
+              <span className="inline-flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                {pendingImageFile ? "Uploading…" : "Saving…"}
+              </span>
+            ) : (
+              "Save changes"
+            )}
           </Button>
         </div>
       </div>
