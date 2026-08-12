@@ -195,8 +195,9 @@ export function CheckoutView() {
           customerPhone: normalizeGhanaPhone(phone),
           address: address.trim(),
           landmark: landmark.trim(),
-          latitude: coords?.latitude,
-          longitude: coords?.longitude,
+          ...(coords
+            ? { latitude: coords.latitude, longitude: coords.longitude }
+            : {}),
           items,
           subtotal,
           deliveryFee,

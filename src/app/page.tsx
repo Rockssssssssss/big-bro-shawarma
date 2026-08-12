@@ -1,5 +1,5 @@
 import Link from "next/link";
-import Image from "next/image";
+import { SafeImage } from "@/components/safe-image";
 import { Logo } from "@/components/logo";
 import { Button } from "@/components/ui/button";
 import { StarRating } from "@/components/star-rating";
@@ -49,8 +49,8 @@ export default function LandingPage() {
       {/* Hero */}
       <section className="relative overflow-hidden">
         <div className="absolute inset-0">
-          <Image
-            src="/food/hero.PNG"
+          <SafeImage
+            src="/food/SHH.PNG"
             alt=""
             fill
             className="object-cover"
@@ -107,13 +107,13 @@ export default function LandingPage() {
             {
               title: "Packages",
               desc: "Combos & family boxes for sharing.",
-              img: "/food/category-packages.jpg",
+              img: "/food/PI1.JPG",
               href: "/app/home",
             },
             {
               title: "Drinks",
               desc: "Ice-cold sodas & refreshers.",
-              img: "/food/drinks.PNG",
+              img: "/food/drinks.png",
               href: "/app/home",
             },
           ].map((cat) => (
@@ -122,7 +122,7 @@ export default function LandingPage() {
               href={cat.href}
               className="group relative h-56 overflow-hidden rounded-[24px] shadow-card"
             >
-              <Image
+              <SafeImage
                 src={cat.img}
                 alt={cat.title}
                 fill
@@ -144,7 +144,7 @@ export default function LandingPage() {
       {/* About */}
       <section id="about" className="mx-auto grid max-w-6xl gap-10 px-4 py-16 sm:px-6 md:grid-cols-2 md:items-center">
         <div className="relative aspect-square overflow-hidden rounded-[28px] shadow-card md:aspect-[4/5]">
-          <Image
+          <SafeImage
             src="/food/bbflyer.PNG"
             alt="About Big Bro"
             fill
@@ -191,8 +191,8 @@ export default function LandingPage() {
                 </Link>
               </div>
               <div className="relative w-2/5">
-                <Image
-                  src="/food/combo-meal.jpg"
+                <SafeImage
+                  src="/food/CnS2.JPG"
                   alt="Solo Combo"
                   fill
                   className="object-cover"
@@ -213,7 +213,7 @@ export default function LandingPage() {
                 </Link>
               </div>
               <div className="relative w-2/5">
-                <Image
+                <SafeImage
                   src="/food/free.jpg"
                   alt="Family Box"
                   fill

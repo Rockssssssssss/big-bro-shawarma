@@ -10,6 +10,7 @@ import {
 } from "firebase/firestore";
 import { getDb } from "@/lib/firebase";
 import { COLLECTIONS } from "@/lib/firebase/schema";
+import { stripUndefined } from "@/lib/firebase/sanitize";
 import type { Order, OrderStatus, PaymentMethod, OrderItem } from "@/lib/types";
 
 function requireDb() {
@@ -57,14 +58,10 @@ export async function createOrder(input: CreateOrderInput): Promise<Order> {
 
   const order: Order = {
     id,
-    customerId: input.customerId,
-    customerEmail: input.customerEmail,
     customerName: input.customerName,
     customerPhone: input.customerPhone,
     address: input.address,
     landmark: input.landmark,
-    latitude: input.latitude,
-    longitude: input.longitude,
     date,
     time,
     status: "received",
@@ -78,8 +75,20 @@ export async function createOrder(input: CreateOrderInput): Promise<Order> {
     updatedAt: now,
   };
 
+  if (input.customerId) order.customerId = input.customerId;
+  if (input.customerEmail) order.customerEmail = input.customerEmail;
+  if (
+    typeof input.latitude === "number" &&
+    Number.isFinite(input.latitude) &&
+    typeof input.longitude === "number" &&
+    Number.isFinite(input.longitude)
+  ) {
+    order.latitude = input.latitude;
+    order.longitude = input.longitude;
+  }
+
   const { id: _id, ...data } = order;
-  await setDoc(doc(db, COLLECTIONS.orders, id), data);
+  await setDoc(doc(db, COLLECTIONS.orders, id), stripUndefined(data));
   return order;
 }
 
@@ -155,11 +164,14 @@ export async function assignRiderToOrder(
   rider: { id: string; name: string; phone: string; eta?: string },
 ): Promise<void> {
   const db = requireDb();
-  await updateDoc(doc(db, COLLECTIONS.orders, orderId), {
-    status: "out-for-delivery" as OrderStatus,
-    rider,
-    updatedAt: Date.now(),
-  });
+  await updateDoc(
+    doc(db, COLLECTIONS.orders, orderId),
+    stripUndefined({
+      status: "out-for-delivery" as OrderStatus,
+      rider,
+      updatedAt: Date.now(),
+    }),
+  );
 }
 
 export async function markOrderDelivered(orderId: string): Promise<void> {

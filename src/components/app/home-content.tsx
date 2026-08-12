@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo } from "react";
@@ -11,6 +10,7 @@ import {
 } from "@/components/icons/category-icons";
 import { ProductCard } from "./product-card";
 import { Button } from "@/components/ui/button";
+import { SafeImage } from "@/components/safe-image";
 import { useCatalog } from "@/components/catalog-context";
 import { useAuth } from "@/components/auth-context";
 import { cn, greetingForHour, firstNameOf } from "@/lib/utils";
@@ -163,8 +163,8 @@ export function HomeContent() {
                 </Button>
               </Link>
             </div>
-            <div className="relative w-[42%] min-w-[130px]">
-              <Image
+            <div className="relative w-[42%] min-w-[130px] bg-secondary">
+              <SafeImage
                 src={todaysSpecial.image}
                 alt={todaysSpecial.name}
                 fill

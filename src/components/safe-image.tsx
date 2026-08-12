@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 
 interface SafeImageProps {
@@ -14,7 +14,13 @@ interface SafeImageProps {
   priority?: boolean;
 }
 
-/** Supports local paths and data: URLs (admin uploads). */
+/** Session cache so remounts after navigation paint immediately from memory. */
+const warmSrcs = new Set<string>();
+
+/**
+ * Native img (not next/image optimizer) so multi‑MB /food assets and Firebase
+ * URLs use the browser disk cache — no 1–2s re-optimize on every navigation.
+ */
 export function SafeImage({
   src,
   alt,
@@ -25,41 +31,39 @@ export function SafeImage({
   sizes,
   priority,
 }: SafeImageProps) {
-  const isData = src.startsWith("data:") || src.startsWith("blob:");
+  const [ready, setReady] = useState(() => warmSrcs.has(src));
 
-  if (isData) {
-    if (fill) {
-      return (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={src}
-          alt={alt}
-          className={cn("absolute inset-0 h-full w-full object-cover", className)}
-        />
-      );
-    }
-    return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        src={src}
-        alt={alt}
-        width={width}
-        height={height}
-        className={className}
-      />
-    );
+  useEffect(() => {
+    setReady(warmSrcs.has(src));
+  }, [src]);
+
+  function markReady() {
+    warmSrcs.add(src);
+    setReady(true);
   }
 
   return (
-    <Image
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
       src={src}
       alt={alt}
-      fill={fill}
       width={fill ? undefined : width}
       height={fill ? undefined : height}
-      className={className}
       sizes={sizes}
-      priority={priority}
+      className={cn(
+        fill && "absolute inset-0 h-full w-full",
+        "bg-border/40",
+        className,
+      )}
+      style={ready ? undefined : { opacity: 0 }}
+      loading={priority ? "eager" : "lazy"}
+      decoding="async"
+      fetchPriority={priority ? "high" : "auto"}
+      onLoad={markReady}
+      onError={markReady}
+      ref={(node) => {
+        if (node?.complete && node.naturalWidth > 0) markReady();
+      }}
     />
   );
 }

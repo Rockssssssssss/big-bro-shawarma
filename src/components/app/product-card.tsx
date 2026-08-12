@@ -21,7 +21,7 @@ export function ProductCard({ product }: { product: Product }) {
     <article className="relative flex gap-3 rounded-[20px] bg-white p-3 shadow-card">
       <Link
         href={`/app/product/${product.id}`}
-        className="relative h-[92px] w-[92px] shrink-0 overflow-hidden rounded-2xl"
+        className="relative h-[92px] w-[92px] shrink-0 overflow-hidden rounded-2xl bg-border/40"
       >
         <SafeImage
           src={product.image}

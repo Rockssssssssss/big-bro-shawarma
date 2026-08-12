@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
+import { SafeImage } from "@/components/safe-image";
 import { Logo } from "@/components/logo";
 
 export default function SplashPage() {
@@ -15,8 +15,8 @@ export default function SplashPage() {
 
   return (
     <div className="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden bg-secondary">
-      <Image
-        src="/food/hero-shawarma.jpg"
+      <SafeImage
+        src="/food/SSH.PNG"
         alt=""
         fill
         className="object-cover opacity-40"

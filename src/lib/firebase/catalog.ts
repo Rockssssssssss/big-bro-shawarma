@@ -18,6 +18,7 @@ import {
   type RestaurantSettingsDoc,
   type HomeSettingsDoc,
 } from "@/lib/firebase/schema";
+import { stripUndefined } from "@/lib/firebase/sanitize";
 import type { Product } from "@/lib/types";
 import {
   products as seedProducts,
@@ -86,7 +87,9 @@ export async function fetchProducts(): Promise<Product[]> {
 export async function saveProduct(product: Product): Promise<void> {
   const db = requireDb();
   const { id, ...data } = product;
-  await setDoc(doc(db, COLLECTIONS.products, id), data, { merge: true });
+  await setDoc(doc(db, COLLECTIONS.products, id), stripUndefined(data), {
+    merge: true,
+  });
 }
 
 export async function deleteProduct(id: string): Promise<void> {

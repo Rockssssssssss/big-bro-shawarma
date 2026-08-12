@@ -1,13 +1,13 @@
-import Image from "next/image";
 import Link from "next/link";
+import { SafeImage } from "@/components/safe-image";
 import { Logo } from "@/components/logo";
 import { Button } from "@/components/ui/button";
 
 export default function WelcomePage() {
   return (
     <div className="flex min-h-dvh flex-col bg-bg">
-      <div className="relative h-[48vh] min-h-[280px] overflow-hidden">
-        <Image
+      <div className="relative h-[48vh] min-h-[280px] overflow-hidden bg-border/40">
+        <SafeImage
           src="/food/login.PNG"
           alt="Fresh shawarma"
           fill
