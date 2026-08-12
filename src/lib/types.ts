@@ -135,6 +135,7 @@ export interface SupportMessage {
   date: string;
   status: "open" | "replied" | "archived";
   reply?: string;
+  updatedAt?: number;
 }
 
 export interface Delivery {

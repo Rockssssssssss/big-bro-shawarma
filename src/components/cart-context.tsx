@@ -20,7 +20,6 @@ interface CartContextValue {
   subtotal: number;
   deliveryFee: number;
   total: number;
-  amountToFreeDelivery: number;
   addItem: (productId: string, quantity?: number, extrasIds?: string[]) => void;
   updateQuantity: (key: string, quantity: number) => void;
   removeItem: (key: string) => void;
@@ -96,16 +95,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo(() => {
     const subtotal = lines.reduce((sum, line) => sum + lineTotal(line), 0);
-    const deliveryFee =
-      subtotal === 0
-        ? 0
-        : subtotal >= restaurant.freeDeliveryMin
-          ? 0
-          : restaurant.deliveryFee;
-    const amountToFreeDelivery = Math.max(
-      0,
-      restaurant.freeDeliveryMin - subtotal,
-    );
+    const deliveryFee = subtotal === 0 ? 0 : restaurant.deliveryFee;
     return {
       lines,
       itemCount: lines.reduce((n, l) => n + l.quantity, 0),
@@ -113,7 +103,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
       subtotal,
       deliveryFee,
       total: subtotal + deliveryFee,
-      amountToFreeDelivery,
       addItem,
       updateQuantity,
       removeItem,

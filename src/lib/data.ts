@@ -125,8 +125,8 @@ export const products: Product[] = [
 ];
 
 export const rewards: Reward[] = [
-  { id: "r5", amount: 5, points: 100, label: "GH₵5.00 Voucher" },
-  { id: "r10", amount: 10, points: 180, label: "GH₵10.00 Voucher" },
+  { id: "r5", amount: 5, points: 150, label: "GH₵5.00 Voucher" },
+  { id: "r10", amount: 10, points: 300, label: "GH₵10.00 Voucher" },
   { id: "r30", amount: 30, points: 450, label: "GH₵30.00 Voucher" },
   { id: "r50", amount: 50, points: 700, label: "GH₵50.00 Voucher" },
 ];
@@ -152,7 +152,6 @@ export const restaurant = {
   hours: "Mon–Sun, 11 AM – 11 PM",
   deliveryEta: "25–35 min",
   deliveryFee: 12,
-  freeDeliveryMin: 150,
   deliveryRadiusKm: 8,
 };
 
@@ -551,7 +550,7 @@ export const faqs = [
     id: "f3",
     category: "Delivery",
     q: "What is the delivery fee?",
-    a: "GH₵12 for orders under GH₵150. Free delivery above GH₵150.",
+    a: "A delivery fee of GH₵12 applies to all delivery orders.",
   },
   {
     id: "f4",

@@ -17,7 +17,6 @@ export function CartView() {
     subtotal,
     deliveryFee,
     total,
-    amountToFreeDelivery,
     updateQuantity,
     removeItem,
     lineTotal,
@@ -138,12 +137,6 @@ export function CartView() {
                     {formatCedi(deliveryFee)}
                   </span>
                 </div>
-                {amountToFreeDelivery > 0 && (
-                  <p className="text-xs text-muted">
-                    Add {formatCedi(amountToFreeDelivery)} more for free
-                    delivery.
-                  </p>
-                )}
                 <div className="my-1.5 border-t border-border/80" />
                 <div className="flex justify-between">
                   <span className="font-bold text-secondary">Total</span>

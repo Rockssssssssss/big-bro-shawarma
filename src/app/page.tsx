@@ -202,11 +202,11 @@ export default function LandingPage() {
             <div className="flex overflow-hidden rounded-[24px] bg-white/10">
               <div className="flex flex-1 flex-col justify-center p-6">
                 <p className="text-xs font-bold tracking-widest text-primary">
-                  FREE DELIVERY
+                  FAMILY FAVOURITE
                 </p>
-                <h3 className="mt-2 text-2xl font-bold">Orders over GH₵150</h3>
+                <h3 className="mt-2 text-2xl font-bold">Family Box</h3>
                 <p className="mt-2 text-sm text-white/70">
-                  Feed the squad with the Family Box and save on delivery.
+                  Feed the squad with the Family Box — packed with flavour.
                 </p>
                 <Link href="/app/product/family-box" className="mt-4 w-fit">
                   <Button size="sm">Get Family Box</Button>
