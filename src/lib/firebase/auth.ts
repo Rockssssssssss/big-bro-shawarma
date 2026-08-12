@@ -340,3 +340,30 @@ export async function setUserRole(
     { merge: true },
   );
 }
+
+/**
+ * Update name/phone on the existing users/{uid} record.
+ * Does not change email or create a new account.
+ */
+export async function updateUserContact(
+  uid: string,
+  input: { name: string; phone: string },
+): Promise<Pick<UserProfile, "name" | "phone">> {
+  const db = requireDb();
+  const name = input.name.trim();
+  const phone = input.phone.trim();
+  if (!name) throw new Error("Full name is required.");
+
+  await setDoc(
+    doc(db, COLLECTIONS.users, uid),
+    { name, phone, updatedAt: Date.now() },
+    { merge: true },
+  );
+
+  const auth = getFirebaseAuth();
+  if (auth?.currentUser?.uid === uid) {
+    await updateProfile(auth.currentUser, { displayName: name });
+  }
+
+  return { name, phone };
+}

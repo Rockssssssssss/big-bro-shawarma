@@ -15,6 +15,7 @@ import {
   logout as fbLogout,
   registerCustomer,
   subscribeAuth,
+  updateUserContact,
   type UserProfile,
   type UserRole,
 } from "@/lib/firebase/auth";
@@ -34,6 +35,11 @@ interface AuthContextValue {
     email: string;
     phone: string;
     password: string;
+  }) => Promise<UserProfile>;
+  /** Update name/phone on the authenticated user's Firestore profile. */
+  updateContact: (input: {
+    name: string;
+    phone: string;
   }) => Promise<UserProfile>;
   logout: () => Promise<void>;
   requireRole: (role: UserRole | UserRole[]) => boolean;
@@ -86,6 +92,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setProfile(null);
   }, []);
 
+  const updateContact = useCallback(
+    async (input: { name: string; phone: string }) => {
+      if (!profile) throw new Error("Not signed in.");
+      const next = await updateUserContact(profile.uid, input);
+      const merged = { ...profile, ...next };
+      setProfile(merged);
+      return merged;
+    },
+    [profile],
+  );
+
   const requireRole = useCallback(
     (role: UserRole | UserRole[]) => {
       if (!profile) return false;
@@ -106,6 +123,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isCustomer: profile?.role === "customer",
       login,
       register,
+      updateContact,
       logout,
       requireRole,
     }),
@@ -116,6 +134,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       usingFirebase,
       login,
       register,
+      updateContact,
       logout,
       requireRole,
     ],

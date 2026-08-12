@@ -317,6 +317,42 @@ export async function markOrderDelivered(orderId: string): Promise<void> {
   await updateOrderStatus(orderId, "delivered");
 }
 
+/**
+ * Keep denormalized rider.name / rider.phone in sync on all orders
+ * assigned to this rider (active + history). Does not reassign riders.
+ */
+export async function updateRiderInfoOnOrders(
+  riderId: string,
+  info: { name: string; phone: string },
+): Promise<void> {
+  const db = requireDb();
+  const snap = await getDocs(collection(db, COLLECTIONS.orders));
+  const targets = snap.docs.filter((d) => {
+    const rider = (d.data() as Order).rider;
+    return rider?.id === riderId;
+  });
+  if (targets.length === 0) return;
+
+  for (let i = 0; i < targets.length; i += 450) {
+    const batch = writeBatch(db);
+    targets.slice(i, i + 450).forEach((d) => {
+      const existing = (d.data() as Order).rider;
+      batch.update(
+        d.ref,
+        stripUndefined({
+          rider: {
+            id: riderId,
+            name: info.name,
+            phone: info.phone,
+            ...(existing?.eta ? { eta: existing.eta } : {}),
+          },
+        }),
+      );
+    });
+    await batch.commit();
+  }
+}
+
 export async function cancelOrder(orderId: string): Promise<void> {
   await updateOrderStatus(orderId, "cancelled");
 }
