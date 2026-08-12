@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import {
+  Banknote,
   Bike,
   Package,
   ShoppingBag,
@@ -14,6 +15,16 @@ import { useCatalog } from "@/components/catalog-context";
 import { isFirebaseConfigured } from "@/lib/firebase";
 import { subscribeUsers } from "@/lib/firebase/auth";
 import { subscribeAllOrders } from "@/lib/firebase/orders";
+import {
+  currentDayKey,
+  currentMonthKey,
+  dailySalesBreakdown,
+  formatDayLabel,
+  formatMonthLabel,
+  sumFinancials,
+  totalsForDay,
+  totalsForMonth,
+} from "@/lib/sales-report";
 import type { Order } from "@/lib/types";
 import { formatCedi } from "@/lib/utils";
 
@@ -36,7 +47,8 @@ export default function AdminDashboardPage() {
   }, [ready]);
 
   const stats = useMemo(() => {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = currentDayKey();
+    const month = currentMonthKey();
     const todayOrders = orders.filter((o) => o.date === today);
     const pending = orders.filter(
       (o) =>
@@ -45,8 +57,11 @@ export default function AdminDashboardPage() {
         o.status === "out-for-delivery",
     );
     const delivered = orders.filter((o) => o.status === "delivered");
-    const salesToday = todayOrders.reduce((s, o) => s + o.total, 0);
-    const revenue = delivered.reduce((s, o) => s + o.total, 0);
+
+    const todayFinance = totalsForDay(orders, today);
+    const allTime = sumFinancials(orders);
+    const monthFinance = totalsForMonth(orders, month);
+    const dailyRows = dailySalesBreakdown(orders, month);
 
     const counts = new Map<string, number>();
     for (const o of orders) {
@@ -64,11 +79,17 @@ export default function AdminDashboardPage() {
     });
 
     return {
-      salesToday,
+      salesToday: todayFinance.companySales,
       ordersToday: todayOrders.length,
       pending: pending.length,
       delivered: delivered.length,
-      revenue,
+      companySales: allTime.companySales,
+      riderDeliveryFees: allTime.riderDeliveryFees,
+      customerPayments: allTime.customerPayments,
+      monthKey: month,
+      monthLabel: formatMonthLabel(month),
+      monthFinance,
+      dailyRows,
       popular,
       recent: orders.slice(0, 5),
     };
@@ -77,6 +98,7 @@ export default function AdminDashboardPage() {
   const widgets = [
     {
       label: "Today's Sales",
+      hint: "Company food only",
       value: formatCedi(stats.salesToday),
       icon: TrendingUp,
       tone: "bg-primary-light text-primary",
@@ -100,8 +122,9 @@ export default function AdminDashboardPage() {
       tone: "bg-accent-light text-accent",
     },
     {
-      label: "Revenue",
-      value: formatCedi(stats.revenue),
+      label: "Total Sales",
+      hint: "Company food only",
+      value: formatCedi(stats.companySales),
       icon: TrendingUp,
       tone: "bg-primary-light text-primary",
     },
@@ -131,6 +154,9 @@ export default function AdminDashboardPage() {
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-sm text-muted">{w.label}</p>
+                {"hint" in w && w.hint ? (
+                  <p className="text-[11px] text-muted/80">{w.hint}</p>
+                ) : null}
                 <p className="mt-2 text-2xl font-bold text-secondary">
                   {w.value}
                 </p>
@@ -144,6 +170,109 @@ export default function AdminDashboardPage() {
           </div>
         ))}
       </div>
+
+      <section className="rounded-[20px] bg-white p-5 shadow-card">
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div>
+            <h2 className="font-bold text-secondary">Financial Summary</h2>
+            <p className="mt-0.5 text-xs text-muted">
+              Company sales exclude rider delivery fees
+            </p>
+          </div>
+          <Link
+            href="/admin/reports"
+            className="text-sm font-semibold text-primary"
+          >
+            Full reports →
+          </Link>
+        </div>
+
+        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+          <div className="rounded-2xl bg-bg px-4 py-3">
+            <p className="text-xs text-muted">Company Sales</p>
+            <p className="mt-1 text-xl font-bold text-secondary">
+              {formatCedi(stats.companySales)}
+            </p>
+            <p className="mt-1 text-[11px] text-muted">All delivered orders</p>
+          </div>
+          <div className="rounded-2xl bg-bg px-4 py-3">
+            <p className="text-xs text-muted">Rider Delivery Fees</p>
+            <p className="mt-1 text-xl font-bold text-secondary">
+              {formatCedi(stats.riderDeliveryFees)}
+            </p>
+            <p className="mt-1 text-[11px] text-muted">Not included in sales</p>
+          </div>
+          <div className="rounded-2xl bg-bg px-4 py-3">
+            <div className="flex items-center gap-1.5">
+              <Banknote className="h-3.5 w-3.5 text-muted" />
+              <p className="text-xs text-muted">Customer Payments</p>
+            </div>
+            <p className="mt-1 text-xl font-bold text-secondary">
+              {formatCedi(stats.customerPayments)}
+            </p>
+            <p className="mt-1 text-[11px] text-muted">
+              Food + delivery collected
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-5 border-t border-border pt-4">
+          <h3 className="text-sm font-bold text-secondary">
+            {stats.monthLabel}
+          </h3>
+          <p className="mt-1 text-xs text-muted">
+            Monthly company sales:{" "}
+            <span className="font-semibold text-secondary">
+              {formatCedi(stats.monthFinance.companySales)}
+            </span>
+            {" · "}
+            Rider fees:{" "}
+            <span className="font-semibold text-secondary">
+              {formatCedi(stats.monthFinance.riderDeliveryFees)}
+            </span>
+            {" · "}
+            Customer payments:{" "}
+            <span className="font-semibold text-secondary">
+              {formatCedi(stats.monthFinance.customerPayments)}
+            </span>
+          </p>
+
+          {stats.dailyRows.length === 0 ? (
+            <p className="mt-4 text-sm text-muted">
+              No delivered sales in {stats.monthLabel} yet.
+            </p>
+          ) : (
+            <div className="mt-3 max-h-64 overflow-y-auto">
+              <table className="w-full text-left text-sm">
+                <thead className="sticky top-0 bg-white text-xs text-muted">
+                  <tr className="border-b border-border">
+                    <th className="pb-2 font-medium">Date</th>
+                    <th className="pb-2 font-medium">Company Sales</th>
+                    <th className="pb-2 font-medium">Rider Fees</th>
+                    <th className="pb-2 font-medium">Customer Payments</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[...stats.dailyRows].reverse().map((row) => (
+                    <tr key={row.date} className="border-b border-border/60">
+                      <td className="py-2.5">{formatDayLabel(row.date)}</td>
+                      <td className="py-2.5 font-semibold text-secondary">
+                        {formatCedi(row.companySales)}
+                      </td>
+                      <td className="py-2.5">
+                        {formatCedi(row.riderDeliveryFees)}
+                      </td>
+                      <td className="py-2.5">
+                        {formatCedi(row.customerPayments)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </section>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <section className="rounded-[20px] bg-white p-5 shadow-card">
@@ -166,6 +295,7 @@ export default function AdminDashboardPage() {
           <div className="mt-4 flex flex-wrap gap-2">
             {[
               { href: "/admin/orders", label: "Orders" },
+              { href: "/admin/reports", label: "Reports" },
               { href: "/admin/support", label: "Support" },
               { href: "/admin/staff", label: "Staff" },
               { href: "/admin/settings", label: "Settings" },

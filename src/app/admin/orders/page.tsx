@@ -178,6 +178,33 @@ export default function AdminOrdersPage() {
                           </li>
                         ))}
                       </ul>
+                      <div className="mt-2 space-y-0.5 rounded-xl bg-white/70 px-2.5 py-2 text-[11px]">
+                        <div className="flex justify-between gap-2 text-muted">
+                          <span>Food Subtotal</span>
+                          <span className="font-medium text-secondary">
+                            {formatCedi(order.subtotal)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between gap-2 text-muted">
+                          <span>Delivery Fee</span>
+                          <span className="font-medium text-secondary">
+                            {formatCedi(order.deliveryFee)}
+                          </span>
+                        </div>
+                        {typeof order.discount === "number" &&
+                        order.discount > 0 ? (
+                          <div className="flex justify-between gap-2 text-muted">
+                            <span>Discount</span>
+                            <span className="font-medium text-secondary">
+                              −{formatCedi(order.discount)}
+                            </span>
+                          </div>
+                        ) : null}
+                        <div className="flex justify-between gap-2 border-t border-border/60 pt-1 font-semibold text-secondary">
+                          <span>Customer Total</span>
+                          <span>{formatCedi(order.total)}</span>
+                        </div>
+                      </div>
                       <p className="mt-2 text-[10px] text-muted">
                         Ordered {order.time}
                       </p>
