@@ -204,9 +204,7 @@ export function OrdersView() {
                       <p className="text-sm font-semibold text-secondary">
                         {order.rider.name}
                       </p>
-                      <p className="text-xs text-muted">
-                        ETA {order.rider.eta ?? "soon"}
-                      </p>
+                      <p className="text-xs text-muted">{order.rider.phone}</p>
                     </div>
                     <a href={`tel:${order.rider.phone}`}>
                       <Button size="sm" variant="soft" className="gap-1.5">

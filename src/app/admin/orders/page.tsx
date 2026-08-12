@@ -4,15 +4,14 @@ import { useEffect, useState } from "react";
 import { Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/auth-context";
-import { riders } from "@/lib/data";
 import {
-  assignRiderToOrder,
   cancelOrder,
+  offerOrderToRiders,
   subscribeAllOrders,
   updateOrderStatus,
 } from "@/lib/firebase/orders";
 import type { Order, OrderStatus } from "@/lib/types";
-import { cn, formatCedi } from "@/lib/utils";
+import { formatCedi } from "@/lib/utils";
 import Link from "next/link";
 
 const columns: { id: OrderStatus; title: string }[] = [
@@ -24,21 +23,42 @@ const columns: { id: OrderStatus; title: string }[] = [
 
 function nextAction(
   status: OrderStatus,
+  order: Order,
 ): { label: string; next: OrderStatus } | null {
   if (status === "received")
     return { label: "Confirm / Prepare", next: "preparing" };
-  if (status === "preparing")
-    return { label: "Assign & Dispatch", next: "out-for-delivery" };
+  if (status === "preparing" && !order.riderRequested)
+    return { label: "Assign Rider", next: "out-for-delivery" };
   if (status === "out-for-delivery")
     return { label: "Mark Completed", next: "delivered" };
+  return null;
+}
+
+function RiderBlock({ order }: { order: Order }) {
+  if (order.rider) {
+    return (
+      <div className="mt-2 rounded-xl bg-white px-2.5 py-2 text-xs">
+        <p className="font-semibold text-secondary">{order.rider.name}</p>
+        <p className="text-muted">{order.rider.phone}</p>
+        <p className="mt-0.5 text-[10px] text-muted">ID: {order.rider.id}</p>
+      </div>
+    );
+  }
+  if (order.riderRequested && order.status === "preparing") {
+    return (
+      <p className="mt-2 text-[11px] font-medium text-amber-700">
+        Awaiting rider acceptance…
+      </p>
+    );
+  }
   return null;
 }
 
 export default function AdminOrdersPage() {
   const { isAdmin, ready, usingFirebase, profile } = useAuth();
   const [list, setList] = useState<Order[]>([]);
-  const [assigning, setAssigning] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!ready || !usingFirebase) return;
@@ -52,23 +72,18 @@ export default function AdminOrdersPage() {
     return unsub;
   }, [ready, usingFirebase]);
 
-  async function move(id: string, next: OrderStatus, riderId?: string) {
+  async function move(id: string, next: OrderStatus) {
+    setBusyId(id);
     try {
-      if (next === "out-for-delivery" && riderId) {
-        const rider = riders.find((r) => r.id === riderId);
-        if (!rider) return;
-        await assignRiderToOrder(id, {
-          id: rider.id,
-          name: rider.name,
-          phone: rider.phone,
-          eta: "20 min",
-        });
+      if (next === "out-for-delivery") {
+        await offerOrderToRiders(id);
       } else {
         await updateOrderStatus(id, next);
       }
-      setAssigning(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Update failed");
+    } finally {
+      setBusyId(null);
     }
   }
 
@@ -128,7 +143,7 @@ export default function AdminOrdersPage() {
               </div>
               <div className="space-y-3">
                 {cards.map((order) => {
-                  const action = nextAction(order.status);
+                  const action = nextAction(order.status, order);
                   return (
                     <article
                       key={order.id}
@@ -167,71 +182,30 @@ export default function AdminOrdersPage() {
                         Ordered {order.time}
                       </p>
 
-                      {assigning === order.id ? (
-                        <div className="mt-3 space-y-1.5">
-                          <p className="text-xs font-semibold">Assign rider</p>
-                          {riders
-                            .filter((r) => r.status !== "offline")
-                            .map((r) => (
-                              <button
-                                key={r.id}
-                                type="button"
-                                onClick={() =>
-                                  void move(order.id, "out-for-delivery", r.id)
-                                }
-                                className="flex w-full items-center justify-between rounded-xl bg-white px-3 py-2 text-xs"
-                              >
-                                <span>{r.name}</span>
-                                <span
-                                  className={cn(
-                                    "capitalize",
-                                    r.status === "available"
-                                      ? "text-accent"
-                                      : "text-amber-600",
-                                  )}
-                                >
-                                  {r.status}
-                                </span>
-                              </button>
-                            ))}
+                      <RiderBlock order={order} />
+
+                      <div className="mt-3 flex flex-wrap gap-1.5">
+                        {action && (
                           <Button
                             size="sm"
-                            variant="ghost"
-                            className="w-full"
-                            onClick={() => setAssigning(null)}
+                            className="text-xs"
+                            disabled={busyId === order.id}
+                            onClick={() => void move(order.id, action.next)}
+                          >
+                            {action.label}
+                          </Button>
+                        )}
+                        {order.status !== "delivered" && (
+                          <Button
+                            size="sm"
+                            variant="danger"
+                            className="text-xs"
+                            onClick={() => void handleCancel(order.id)}
                           >
                             Cancel
                           </Button>
-                        </div>
-                      ) : (
-                        <div className="mt-3 flex flex-wrap gap-1.5">
-                          {action && (
-                            <Button
-                              size="sm"
-                              className="text-xs"
-                              onClick={() => {
-                                if (action.next === "out-for-delivery") {
-                                  setAssigning(order.id);
-                                } else {
-                                  void move(order.id, action.next);
-                                }
-                              }}
-                            >
-                              {action.label}
-                            </Button>
-                          )}
-                          {order.status !== "delivered" && (
-                            <Button
-                              size="sm"
-                              variant="danger"
-                              className="text-xs"
-                              onClick={() => void handleCancel(order.id)}
-                            >
-                              Cancel
-                            </Button>
-                          )}
-                        </div>
-                      )}
+                        )}
+                      </div>
                     </article>
                   );
                 })}

@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ChevronLeft, MapPin, Navigation, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/components/auth-context";
 import {
   markOrderDelivered,
   subscribeAllOrders,
@@ -15,7 +16,9 @@ import { formatCedi } from "@/lib/utils";
 export default function RiderDeliveryDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
+  const { profile } = useAuth();
   const [delivery, setDelivery] = useState<Order | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const unsub = subscribeAllOrders((orders) => {
@@ -34,6 +37,11 @@ export default function RiderDeliveryDetailPage() {
       </div>
     );
   }
+
+  const isMine =
+    !!profile &&
+    delivery.status === "out-for-delivery" &&
+    delivery.rider?.id === profile.uid;
 
   return (
     <div className="animate-fade-up px-4 py-3 pb-8">
@@ -116,16 +124,38 @@ export default function RiderDeliveryDetailPage() {
           </div>
         </section>
 
-        <Button
-          size="xl"
-          className="w-full"
-          onClick={async () => {
-            await markOrderDelivered(delivery.id);
-            router.push("/rider");
-          }}
-        >
-          Mark as Delivered
-        </Button>
+        {error && (
+          <p className="rounded-xl bg-danger-light px-3 py-2 text-xs text-danger">
+            {error}
+          </p>
+        )}
+
+        {isMine && (
+          <Button
+            size="xl"
+            className="w-full"
+            onClick={async () => {
+              try {
+                await markOrderDelivered(delivery.id);
+                router.push("/rider");
+              } catch (err) {
+                setError(
+                  err instanceof Error ? err.message : "Update failed",
+                );
+              }
+            }}
+          >
+            Mark as Delivered
+          </Button>
+        )}
+
+        {!isMine && (
+          <p className="text-center text-sm text-muted">
+            {delivery.status === "delivered"
+              ? "This delivery is already completed."
+              : "This delivery is not assigned to you."}
+          </p>
+        )}
       </div>
     </div>
   );

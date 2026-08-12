@@ -86,6 +86,10 @@ export interface Order {
   total: number;
   paymentMethod: PaymentMethod;
   rider?: { id: string; name: string; phone: string; eta?: string };
+  /** Admin opened this order to all riders; awaiting first acceptance. */
+  riderRequested?: boolean;
+  /** Rider UIDs who declined (BUSY) this offer. */
+  declinedBy?: string[];
   reviewed?: boolean;
   createdAt?: number;
   updatedAt?: number;
