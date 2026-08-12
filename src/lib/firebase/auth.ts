@@ -19,6 +19,7 @@ import {
 import { getFirebaseAuth, getDb, isFirebaseConfigured } from "@/lib/firebase";
 import { COLLECTIONS } from "@/lib/firebase/schema";
 import { nameFromEmail } from "@/lib/utils";
+import type { CustomerVoucher } from "@/lib/types";
 
 export type UserRole = "customer" | "admin" | "rider";
 
@@ -31,6 +32,8 @@ export interface UserProfile {
   points: number;
   orders: number;
   totalSpent: number;
+  /** Explicitly redeemed loyalty vouchers (not auto-applied). */
+  vouchers?: CustomerVoucher[];
   createdAt?: unknown;
 }
 
@@ -296,18 +299,62 @@ export function subscribeAuth(
     return () => undefined;
   }
 
-  return onAuthStateChanged(auth, async (user) => {
+  let unsubProfile: Unsubscribe | undefined;
+  let loyaltySyncedUid: string | null = null;
+
+  const unsubAuth = onAuthStateChanged(auth, async (user) => {
+    unsubProfile?.();
+    unsubProfile = undefined;
+
     if (!user) {
+      loyaltySyncedUid = null;
       onChange(null, null);
       return;
     }
     try {
-      const profile = await ensureUserProfile(user);
-      onChange(user, profile);
+      await ensureUserProfile(user);
+      const db = getDb();
+      if (!db) {
+        onChange(user, null);
+        return;
+      }
+
+      unsubProfile = onSnapshot(
+        doc(db, COLLECTIONS.users, user.uid),
+        (snap) => {
+          if (!snap.exists()) {
+            onChange(user, null);
+            return;
+          }
+          const profile = {
+            uid: user.uid,
+            ...snap.data(),
+          } as UserProfile;
+          onChange(user, profile);
+
+          // One absolute backfill per login — never stacks points on refresh.
+          if (profile.role === "customer" && loyaltySyncedUid !== user.uid) {
+            loyaltySyncedUid = user.uid;
+            void import("@/lib/firebase/loyalty")
+              .then(({ syncCustomerLoyalty }) =>
+                syncCustomerLoyalty(user.uid),
+              )
+              .catch(() => {
+                loyaltySyncedUid = null;
+              });
+          }
+        },
+        () => onChange(user, null),
+      );
     } catch {
       onChange(user, null);
     }
   });
+
+  return () => {
+    unsubProfile?.();
+    unsubAuth();
+  };
 }
 
 export function subscribeUsers(

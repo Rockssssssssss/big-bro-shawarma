@@ -1,21 +1,51 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Gift, Star, Zap } from "lucide-react";
 import { PageHeader } from "./page-header";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/auth-context";
 import { rewards } from "@/lib/data";
+import {
+  availableVouchers,
+  nextRewardTier,
+  pointsToNextReward,
+} from "@/lib/loyalty";
+import { redeemLoyaltyReward } from "@/lib/firebase/loyalty";
 import { cn, formatCedi } from "@/lib/utils";
 
 export function RewardsView() {
-  const { profile } = useAuth();
+  const { profile, user } = useAuth();
   const points = profile?.points ?? 0;
-  const next = rewards.find((r) => r.points > points) ?? rewards[rewards.length - 1];
-  const away = Math.max(0, next.points - points);
-  const progress = Math.min(100, (points / next.points) * 100);
+  const next = nextRewardTier(points);
+  const away = pointsToNextReward(points);
+  const progress = Math.min(100, (points / Math.max(1, next.points)) * 100);
+  const vouchers = useMemo(
+    () => availableVouchers(profile?.vouchers ?? []),
+    [profile?.vouchers],
+  );
   const [selected, setSelected] = useState<string | null>(null);
-  const [redeemed, setRedeemed] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleRedeem() {
+    if (!selected || !user) return;
+    setBusy(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const voucher = await redeemLoyaltyReward(user.uid, selected);
+      setMessage(
+        `${voucher.label} redeemed! Apply it at checkout when you place an order.`,
+      );
+      setSelected(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not redeem reward.");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   return (
     <div className="animate-fade-up">
@@ -69,6 +99,32 @@ export function RewardsView() {
           </div>
         </section>
 
+        {vouchers.length > 0 && (
+          <section>
+            <h3 className="mb-3 font-bold text-secondary">Your Vouchers</h3>
+            <div className="space-y-2.5">
+              {vouchers.map((v) => (
+                <div
+                  key={v.id}
+                  className="flex items-center gap-3 rounded-[20px] border-2 border-accent/40 bg-white p-4 shadow-card"
+                >
+                  <span className="flex h-12 w-12 items-center justify-center rounded-full bg-accent text-white">
+                    <Gift className="h-5 w-5" />
+                  </span>
+                  <span className="flex-1">
+                    <span className="block font-bold text-secondary">
+                      {formatCedi(v.amount)} Voucher
+                    </span>
+                    <span className="text-xs text-muted">
+                      Ready to apply at checkout
+                    </span>
+                  </span>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
         <section>
           <h3 className="mb-3 font-bold text-secondary">Available Rewards</h3>
           <div className="space-y-2.5">
@@ -79,7 +135,7 @@ export function RewardsView() {
                 <button
                   key={reward.id}
                   type="button"
-                  disabled={!canRedeem}
+                  disabled={!canRedeem || busy || !user}
                   onClick={() => setSelected(reward.id)}
                   className={cn(
                     "flex w-full items-center gap-3 rounded-[20px] border-2 bg-white p-4 text-left transition",
@@ -116,18 +172,22 @@ export function RewardsView() {
             <Button
               className="mt-4 w-full"
               size="lg"
-              onClick={() => {
-                setRedeemed(selected);
-                setSelected(null);
-              }}
+              disabled={busy || !user}
+              onClick={() => void handleRedeem()}
             >
-              Redeem{" "}
-              {rewards.find((r) => r.id === selected)?.label ?? "Reward"}
+              {busy
+                ? "Redeeming..."
+                : `Redeem ${rewards.find((r) => r.id === selected)?.label ?? "Reward"}`}
             </Button>
           )}
-          {redeemed && (
+          {message && (
             <p className="mt-3 text-center text-sm font-medium text-accent">
-              Voucher redeemed! Apply it at checkout.
+              {message}
+            </p>
+          )}
+          {error && (
+            <p className="mt-3 text-center text-sm font-medium text-danger">
+              {error}
             </p>
           )}
         </section>

@@ -127,8 +127,9 @@ export const products: Product[] = [
 export const rewards: Reward[] = [
   { id: "r5", amount: 5, points: 150, label: "GH₵5.00 Voucher" },
   { id: "r10", amount: 10, points: 300, label: "GH₵10.00 Voucher" },
-  { id: "r30", amount: 30, points: 450, label: "GH₵30.00 Voucher" },
-  { id: "r50", amount: 50, points: 700, label: "GH₵50.00 Voucher" },
+  { id: "r20", amount: 20, points: 600, label: "GH₵20.00 Voucher" },
+  { id: "r30", amount: 30, points: 900, label: "GH₵30.00 Voucher" },
+  { id: "r50", amount: 50, points: 1500, label: "GH₵50.00 Voucher" },
 ];
 
 export const currentCustomer = {

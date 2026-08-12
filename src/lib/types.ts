@@ -84,6 +84,9 @@ export interface Order {
   subtotal: number;
   deliveryFee: number;
   total: number;
+  /** Loyalty voucher discount applied at checkout (after explicit redemption). */
+  discount?: number;
+  voucherId?: string;
   paymentMethod: PaymentMethod;
   rider?: { id: string; name: string; phone: string; eta?: string };
   /** Admin opened this order to all riders; awaiting first acceptance. */
@@ -124,6 +127,20 @@ export interface Reward {
   amount: number;
   points: number;
   label: string;
+}
+
+/** Loyalty voucher created when a customer explicitly redeems a reward. */
+export interface CustomerVoucher {
+  id: string;
+  rewardId: string;
+  amount: number;
+  label: string;
+  pointsCost: number;
+  redeemedAt: number;
+  expiresAt: number;
+  status: "available" | "used" | "expired";
+  usedAt?: number;
+  usedOrderId?: string;
 }
 
 export interface SupportMessage {

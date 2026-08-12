@@ -22,10 +22,14 @@ import { useAuth } from "@/components/auth-context";
 import { useCart } from "@/components/cart-context";
 import { useCatalog } from "@/components/catalog-context";
 import { createOrder } from "@/lib/firebase/orders";
+import {
+  getCustomerAvailableVouchers,
+  markVoucherUsed,
+} from "@/lib/firebase/loyalty";
 import { isMapboxConfigured } from "@/lib/mapbox";
 import { extras, restaurant } from "@/lib/data";
 import type { MapboxSelectedAddress } from "@/lib/mapbox";
-import type { OrderItem, PaymentMethod } from "@/lib/types";
+import type { CustomerVoucher, OrderItem, PaymentMethod } from "@/lib/types";
 import {
   cn,
   formatCedi,
@@ -78,7 +82,7 @@ const paymentMeta: {
 export function CheckoutView() {
   const router = useRouter();
   const { profile, user, usingFirebase } = useAuth();
-  const { lines, subtotal, deliveryFee, total, clear, lineTotal } = useCart();
+  const { lines, subtotal, deliveryFee, clear, lineTotal } = useCart();
   const { payments, getProduct } = useCatalog();
   const [address, setAddress] = useState("");
   const [addressSelected, setAddressSelected] = useState(false);
@@ -93,10 +97,47 @@ export function CheckoutView() {
   const [payment, setPayment] = useState<PaymentMethod>("cash");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [vouchers, setVouchers] = useState<CustomerVoucher[]>([]);
+  const [selectedVoucherId, setSelectedVoucherId] = useState<string | null>(
+    null,
+  );
 
   useEffect(() => {
     if (profile?.phone) setPhone(normalizeGhanaPhone(profile.phone));
   }, [profile?.phone]);
+
+  useEffect(() => {
+    if (!usingFirebase || !user) {
+      setVouchers([]);
+      setSelectedVoucherId(null);
+      return;
+    }
+    let cancelled = false;
+    void getCustomerAvailableVouchers(user.uid)
+      .then((list) => {
+        if (cancelled) return;
+        setVouchers(list);
+        setSelectedVoucherId((prev) =>
+          prev && list.some((v) => v.id === prev) ? prev : null,
+        );
+      })
+      .catch(() => {
+        if (!cancelled) setVouchers([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [usingFirebase, user, profile?.vouchers]);
+
+  const selectedVoucher = useMemo(
+    () => vouchers.find((v) => v.id === selectedVoucherId) ?? null,
+    [vouchers, selectedVoucherId],
+  );
+
+  const discount = selectedVoucher
+    ? Math.min(selectedVoucher.amount, subtotal + deliveryFee)
+    : 0;
+  const payableTotal = Math.max(0, subtotal + deliveryFee - discount);
 
   const enabledCount = useMemo(
     () => paymentMeta.filter((p) => payments[p.id]).length,
@@ -188,7 +229,7 @@ export function CheckoutView() {
       });
 
       if (usingFirebase) {
-        await createOrder({
+        const order = await createOrder({
           customerId: user?.uid,
           customerEmail: profile?.email ?? user?.email ?? undefined,
           customerName: profile?.name ?? "Guest",
@@ -201,9 +242,16 @@ export function CheckoutView() {
           items,
           subtotal,
           deliveryFee,
-          total,
+          total: payableTotal,
+          ...(discount > 0 && selectedVoucher
+            ? { discount, voucherId: selectedVoucher.id }
+            : {}),
           paymentMethod: payment,
         });
+
+        if (user?.uid && selectedVoucher && discount > 0) {
+          await markVoucherUsed(user.uid, selectedVoucher.id, order.id);
+        }
       }
 
       clear();
@@ -370,6 +418,71 @@ export function CheckoutView() {
           )}
         </section>
 
+        {vouchers.length > 0 && (
+          <section>
+            <h2 className="mb-3 font-semibold text-secondary">
+              Apply Voucher
+            </h2>
+            <div className="space-y-2.5">
+              <button
+                type="button"
+                onClick={() => setSelectedVoucherId(null)}
+                className={cn(
+                  "flex w-full items-center justify-between rounded-[20px] border-2 bg-white p-4 text-left transition",
+                  !selectedVoucherId
+                    ? "border-primary shadow-soft"
+                    : "border-transparent shadow-card",
+                )}
+              >
+                <span className="font-semibold text-secondary">No voucher</span>
+                <span
+                  className={cn(
+                    "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2",
+                    !selectedVoucherId
+                      ? "border-primary bg-primary text-white"
+                      : "border-border",
+                  )}
+                >
+                  {!selectedVoucherId && <Check className="h-3.5 w-3.5" />}
+                </span>
+              </button>
+              {vouchers.map((v) => {
+                const selected = selectedVoucherId === v.id;
+                return (
+                  <button
+                    key={v.id}
+                    type="button"
+                    onClick={() => setSelectedVoucherId(v.id)}
+                    className={cn(
+                      "flex w-full items-center justify-between rounded-[20px] border-2 bg-white p-4 text-left transition",
+                      selected
+                        ? "border-primary shadow-soft"
+                        : "border-transparent shadow-card",
+                    )}
+                  >
+                    <span>
+                      <span className="block font-semibold text-secondary">
+                        {formatCedi(v.amount)} off
+                      </span>
+                      <span className="text-xs text-muted">{v.label}</span>
+                    </span>
+                    <span
+                      className={cn(
+                        "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2",
+                        selected
+                          ? "border-primary bg-primary text-white"
+                          : "border-border",
+                      )}
+                    >
+                      {selected && <Check className="h-3.5 w-3.5" />}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
         {error && (
           <p className="rounded-xl bg-danger-light px-3 py-2 text-sm text-danger">
             {error}
@@ -397,11 +510,19 @@ export function CheckoutView() {
                 {formatCedi(deliveryFee)}
               </span>
             </div>
+            {discount > 0 && (
+              <div className="flex justify-between text-sm">
+                <span className="text-muted">Voucher</span>
+                <span className="font-semibold text-accent">
+                  −{formatCedi(discount)}
+                </span>
+              </div>
+            )}
             <div className="my-1.5 border-t border-border/80" />
             <div className="flex justify-between">
               <span className="font-bold text-secondary">Total</span>
               <span className="text-lg font-bold text-secondary">
-                {formatCedi(total)}
+                {formatCedi(payableTotal)}
               </span>
             </div>
           </div>
@@ -418,7 +539,7 @@ export function CheckoutView() {
                   ? "Log in to order"
                   : "Place Order"}
             </span>
-            <span>{formatCedi(total)}</span>
+            <span>{formatCedi(payableTotal)}</span>
           </Button>
         </div>
       </div>

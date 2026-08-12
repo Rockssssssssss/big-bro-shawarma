@@ -51,6 +51,8 @@ export type CreateOrderInput = {
   subtotal: number;
   deliveryFee: number;
   total: number;
+  discount?: number;
+  voucherId?: string;
   paymentMethod: PaymentMethod;
 };
 
@@ -83,6 +85,10 @@ export async function createOrder(input: CreateOrderInput): Promise<Order> {
 
   if (input.customerId) order.customerId = input.customerId;
   if (input.customerEmail) order.customerEmail = input.customerEmail;
+  if (typeof input.discount === "number" && input.discount > 0) {
+    order.discount = input.discount;
+  }
+  if (input.voucherId) order.voucherId = input.voucherId;
   if (
     typeof input.latitude === "number" &&
     Number.isFinite(input.latitude) &&
@@ -210,6 +216,13 @@ export async function updateOrderStatus(
     status,
     updatedAt: Date.now(),
   });
+  if (status === "delivered") {
+    const order = await getOrder(orderId);
+    if (order?.customerId) {
+      const { syncCustomerLoyalty } = await import("@/lib/firebase/loyalty");
+      await syncCustomerLoyalty(order.customerId);
+    }
+  }
 }
 
 /**
