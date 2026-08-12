@@ -135,7 +135,12 @@ export function ProductEditorModal({
       setDraft((prev) => ({
         ...prev,
         image: url,
-        images: [url, ...(prev.images ?? []).filter((i) => i !== url)],
+        images: [
+          url,
+          ...(prev.images ?? []).filter(
+            (i) => i !== url && !i.startsWith("blob:") && !i.startsWith("data:"),
+          ),
+        ],
       }));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not read that photo");

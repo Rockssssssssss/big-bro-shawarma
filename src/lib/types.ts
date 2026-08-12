@@ -114,6 +114,9 @@ export interface Review {
   date: string;
   product?: string;
   reply?: string;
+  orderId?: string;
+  customerId?: string;
+  createdAt?: number;
 }
 
 export interface Reward {

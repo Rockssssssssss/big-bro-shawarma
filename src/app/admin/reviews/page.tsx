@@ -1,15 +1,55 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { StarRating } from "@/components/star-rating";
 import { Button } from "@/components/ui/button";
+import { replyToReview, subscribeReviews } from "@/lib/firebase/reviews";
+import { isFirebaseConfigured } from "@/lib/firebase";
 import type { Review } from "@/lib/types";
 
-/** Reviews will load from Firebase when the review flow is fully wired. */
 export default function AdminReviewsPage() {
-  const [list] = useState<Review[]>([]);
+  const [list, setList] = useState<Review[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
   const [replying, setReplying] = useState<string | null>(null);
   const [text, setText] = useState("");
+  const [savingReply, setSavingReply] = useState(false);
+
+  useEffect(() => {
+    if (!isFirebaseConfigured()) {
+      setList([]);
+      setLoading(false);
+      setError("Firebase is not configured.");
+      return;
+    }
+    const unsub = subscribeReviews(
+      (reviews) => {
+        setList(reviews);
+        setError(null);
+        setLoading(false);
+      },
+      (err) => {
+        setError(err.message);
+        setLoading(false);
+      },
+    );
+    return unsub;
+  }, []);
+
+  async function saveReply(id: string) {
+    if (!text.trim() || savingReply) return;
+    setSavingReply(true);
+    setError(null);
+    try {
+      await replyToReview(id, text);
+      setReplying(null);
+      setText("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not save reply");
+    } finally {
+      setSavingReply(false);
+    }
+  }
 
   return (
     <div className="space-y-5 animate-fade-up">
@@ -18,7 +58,15 @@ export default function AdminReviewsPage() {
         <p className="text-sm text-muted">Customer ratings & replies</p>
       </div>
 
-      {list.length === 0 ? (
+      {error && (
+        <p className="rounded-xl bg-danger-light px-3 py-2 text-sm text-danger">
+          {error}
+        </p>
+      )}
+
+      {loading ? (
+        <p className="text-sm text-muted">Loading reviews…</p>
+      ) : list.length === 0 ? (
         <div className="rounded-[20px] bg-white p-10 text-center shadow-card">
           <p className="font-semibold text-secondary">No reviews yet</p>
           <p className="mt-1 text-sm text-muted">
@@ -36,12 +84,18 @@ export default function AdminReviewsPage() {
                 <div>
                   <p className="font-bold text-secondary">{r.name}</p>
                   <p className="text-xs text-muted">
-                    {r.product} · {r.date}
+                    {[r.orderId ? `Order ${r.orderId}` : null, r.product, r.date]
+                      .filter(Boolean)
+                      .join(" · ")}
                   </p>
                 </div>
                 <StarRating value={r.rating} size="sm" />
               </div>
-              <p className="mt-3 text-sm text-secondary">{r.comment}</p>
+              {r.comment ? (
+                <p className="mt-3 text-sm text-secondary">{r.comment}</p>
+              ) : (
+                <p className="mt-3 text-sm italic text-muted">No written comment</p>
+              )}
               {r.reply && (
                 <div className="mt-3 rounded-2xl bg-accent-light/40 p-3 text-sm">
                   <p className="font-semibold text-accent">Reply</p>
@@ -58,7 +112,19 @@ export default function AdminReviewsPage() {
                     placeholder="Write a reply..."
                   />
                   <div className="flex gap-2">
-                    <Button size="sm" onClick={() => setReplying(null)}>
+                    <Button
+                      size="sm"
+                      disabled={!text.trim() || savingReply}
+                      onClick={() => void saveReply(r.id)}
+                    >
+                      {savingReply ? "Saving…" : "Send reply"}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={savingReply}
+                      onClick={() => setReplying(null)}
+                    >
                       Cancel
                     </Button>
                   </div>

@@ -80,26 +80,27 @@ async function prepareProductForSave(
     src.startsWith("data:") || src.startsWith("blob:");
 
   let image = product.image;
+
   if (imageFile) {
+    // Upload the selected File once. Never re-fetch blob: preview URLs
+    // (they may already be revoked and hang forever on mobile).
     image = await uploadProductImage(product.id, imageFile);
   } else if (needsUpload(image)) {
     image = await uploadProductImage(product.id, image);
   }
 
-  const images = await Promise.all(
-    (product.images ?? [product.image]).map(async (img) => {
-      if (img === product.image) return image;
-      if (needsUpload(img)) {
-        return uploadProductImage(product.id, img);
-      }
-      return img;
-    }),
-  );
+  const images = (product.images ?? [product.image]).map((img) => {
+    if (needsUpload(img) || img === product.image) return image;
+    return img;
+  });
+
+  // Keep primary first; drop duplicate blob placeholders
+  const unique = [image, ...images.filter((img) => img !== image)];
 
   return {
     ...product,
     image,
-    images: images.length ? images : [image],
+    images: unique,
   };
 }
 

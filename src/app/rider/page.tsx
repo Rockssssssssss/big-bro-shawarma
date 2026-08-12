@@ -8,6 +8,7 @@ import { useAuth } from "@/components/auth-context";
 import {
   acceptOrderAsRider,
   declineOrderAsRider,
+  isPendingOfferForRider,
   markOrderDelivered,
   subscribeActiveDeliveries,
 } from "@/lib/firebase/orders";
@@ -36,10 +37,7 @@ export default function RiderHomePage() {
     return unsub;
   }, [ready, usingFirebase, riderId]);
 
-  const offers = list.filter(
-    (d) =>
-      d.status === "preparing" && d.riderRequested && !d.rider,
-  );
+  const offers = list.filter((d) => isPendingOfferForRider(d, riderId));
   const active = list.filter(
     (d) => d.status === "out-for-delivery" && d.rider?.id === riderId,
   );

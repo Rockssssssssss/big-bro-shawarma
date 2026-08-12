@@ -3,6 +3,7 @@ import {
   collection,
   deleteField,
   doc,
+  getDoc,
   getDocs,
   onSnapshot,
   runTransaction,
@@ -143,6 +144,16 @@ export function subscribeCustomerOrders(
  * - Pending offers (preparing + riderRequested, not yet claimed, not declined by this rider)
  * - Active deliveries assigned to this rider (out-for-delivery)
  */
+export function isPendingOfferForRider(order: Order, riderId: string): boolean {
+  const declined = order.declinedBy ?? [];
+  return (
+    order.status === "preparing" &&
+    !!order.riderRequested &&
+    !order.rider &&
+    !declined.includes(riderId)
+  );
+}
+
 export function subscribeActiveDeliveries(
   riderId: string,
   onData: (orders: Order[]) => void,
@@ -151,18 +162,43 @@ export function subscribeActiveDeliveries(
   return subscribeAllOrders((all) => {
     onData(
       all.filter((o) => {
-        const declined = o.declinedBy ?? [];
-        const isPendingOffer =
-          o.status === "preparing" &&
-          !!o.riderRequested &&
-          !o.rider &&
-          !declined.includes(riderId);
+        const isPendingOffer = isPendingOfferForRider(o, riderId);
         const isMyActive =
           o.status === "out-for-delivery" && o.rider?.id === riderId;
         return isPendingOffer || isMyActive;
       }),
     );
   }, onError);
+}
+
+/** Completed deliveries for the authenticated rider (History). */
+export function subscribeRiderHistory(
+  riderId: string,
+  onData: (orders: Order[]) => void,
+  onError?: (err: Error) => void,
+): Unsubscribe {
+  return subscribeAllOrders((all) => {
+    onData(
+      all.filter(
+        (o) => o.status === "delivered" && o.rider?.id === riderId,
+      ),
+    );
+  }, onError);
+}
+
+export async function getOrder(orderId: string): Promise<Order | null> {
+  const db = requireDb();
+  const snap = await getDoc(doc(db, COLLECTIONS.orders, orderId));
+  if (!snap.exists()) return null;
+  return mapOrder(snap.id, snap.data() as Record<string, unknown>);
+}
+
+export async function markOrderReviewed(orderId: string): Promise<void> {
+  const db = requireDb();
+  await updateDoc(doc(db, COLLECTIONS.orders, orderId), {
+    reviewed: true,
+    updatedAt: Date.now(),
+  });
 }
 
 export async function updateOrderStatus(

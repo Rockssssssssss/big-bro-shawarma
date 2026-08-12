@@ -5,6 +5,9 @@ import { useState } from "react";
 import { PageHeader } from "./page-header";
 import { Button } from "@/components/ui/button";
 import { StarRating } from "@/components/star-rating";
+import { useAuth } from "@/components/auth-context";
+import { isFirebaseConfigured } from "@/lib/firebase";
+import { createReview } from "@/lib/firebase/reviews";
 
 const feedback: Record<number, string> = {
   1: "We're sorry — tell us what went wrong.",
@@ -16,16 +19,36 @@ const feedback: Record<number, string> = {
 
 export function ReviewView({ orderId }: { orderId: string }) {
   const router = useRouter();
+  const { profile, user } = useAuth();
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function submit() {
     if (!rating) return;
+    setError(null);
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 800));
-    setLoading(false);
-    router.push("/app/orders");
+    try {
+      if (!isFirebaseConfigured()) {
+        throw new Error("Reviews are unavailable right now. Please try again later.");
+      }
+      if (!user) {
+        throw new Error("Please log in to submit a review.");
+      }
+      await createReview({
+        orderId,
+        customerId: profile?.uid,
+        name: profile?.name || user.displayName || "Customer",
+        rating,
+        comment,
+      });
+      router.push("/app/orders");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not submit review");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -53,6 +76,11 @@ export function ReviewView({ orderId }: { orderId: string }) {
           <p className="mt-1 text-right text-[10px] text-muted">
             {comment.length}/500
           </p>
+          {error && (
+            <p className="mt-3 rounded-2xl bg-danger/10 px-4 py-3 text-sm font-medium text-danger">
+              {error}
+            </p>
+          )}
           <Button
             className="mt-4 w-full"
             size="lg"

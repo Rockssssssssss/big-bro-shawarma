@@ -2,9 +2,13 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Bike, Clock, Home, User } from "lucide-react";
 import { useAuth } from "@/components/auth-context";
+import {
+  isPendingOfferForRider,
+  subscribeActiveDeliveries,
+} from "@/lib/firebase/orders";
 import { cn } from "@/lib/utils";
 
 const tabs = [
@@ -20,9 +24,13 @@ export default function RiderLayout({
 }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { ready, user, isRider, usingFirebase } = useAuth();
+  const { ready, user, isRider, usingFirebase, profile } = useAuth();
+  const [pendingOffers, setPendingOffers] = useState(0);
+  const [badgePulse, setBadgePulse] = useState(0);
+  const prevCount = useRef(0);
 
   const isLoginPage = pathname === "/rider/login";
+  const riderId = profile?.uid ?? "";
 
   useEffect(() => {
     if (isLoginPage || !ready || !usingFirebase) return;
@@ -30,6 +38,24 @@ export default function RiderLayout({
       router.replace("/rider/login");
     }
   }, [isLoginPage, ready, user, isRider, usingFirebase, router]);
+
+  useEffect(() => {
+    if (isLoginPage || !ready || !usingFirebase || !riderId || !isRider) {
+      setPendingOffers(0);
+      return;
+    }
+    const unsub = subscribeActiveDeliveries(riderId, (orders) => {
+      const count = orders.filter((o) =>
+        isPendingOfferForRider(o, riderId),
+      ).length;
+      setPendingOffers(count);
+      if (count !== prevCount.current) {
+        if (count > 0) setBadgePulse((n) => n + 1);
+        prevCount.current = count;
+      }
+    });
+    return unsub;
+  }, [isLoginPage, ready, usingFirebase, riderId, isRider]);
 
   if (isLoginPage) {
     return (
@@ -71,16 +97,32 @@ export default function RiderLayout({
             const active = exact
               ? pathname === href
               : pathname.startsWith(href);
+            const showBadge = href === "/rider" && pendingOffers > 0;
             return (
               <Link
                 key={href}
                 href={href}
                 className={cn(
-                  "flex flex-col items-center gap-0.5 py-2 text-[11px] font-medium",
+                  "relative flex flex-col items-center gap-0.5 py-2 text-[11px] font-medium",
                   active ? "text-primary" : "text-muted",
                 )}
+                aria-label={
+                  showBadge
+                    ? `${label}, ${pendingOffers} pending offer${pendingOffers === 1 ? "" : "s"}`
+                    : label
+                }
               >
-                <Icon className="h-5 w-5" strokeWidth={active ? 2.4 : 1.8} />
+                <span className="relative">
+                  <Icon className="h-5 w-5" strokeWidth={active ? 2.4 : 1.8} />
+                  {showBadge && (
+                    <span
+                      key={`offer-badge-${badgePulse}-${pendingOffers}`}
+                      className="absolute -right-2.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-bold leading-none text-white animate-badge-enter"
+                    >
+                      {pendingOffers > 99 ? "99+" : pendingOffers}
+                    </span>
+                  )}
+                </span>
                 {label}
               </Link>
             );

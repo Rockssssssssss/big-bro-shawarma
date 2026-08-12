@@ -1,51 +1,70 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { useAuth } from "@/components/auth-context";
+import { subscribeRiderHistory } from "@/lib/firebase/orders";
+import type { Order } from "@/lib/types";
 import { formatCedi } from "@/lib/utils";
 
-const history = [
-  {
-    id: "h1",
-    orderId: "BB-1028",
-    customer: "Yaw Osei",
-    address: "East Legon",
-    amount: 67,
-    earning: 12,
-    time: "Yesterday · 8:40 PM",
-  },
-  {
-    id: "h2",
-    orderId: "BB-1022",
-    customer: "Ama Mensah",
-    address: "Cantonments",
-    amount: 118,
-    earning: 15,
-    time: "Yesterday · 2:15 PM",
-  },
-  {
-    id: "h3",
-    orderId: "BB-1015",
-    customer: "Efua Darko",
-    address: "Labone",
-    amount: 55,
-    earning: 12,
-    time: "Aug 2 · 1:05 PM",
-  },
-  {
-    id: "h4",
-    orderId: "BB-1009",
-    customer: "Kojo Boateng",
-    address: "Osu",
-    amount: 160,
-    earning: 18,
-    time: "Aug 1 · 7:22 PM",
-  },
-];
+function historyTime(order: Order): string {
+  const ts = order.updatedAt ?? order.createdAt;
+  if (ts) {
+    return new Date(ts).toLocaleString("en-GB", {
+      day: "numeric",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    });
+  }
+  return [order.date, order.time].filter(Boolean).join(" · ");
+}
 
 export default function RiderHistoryPage() {
-  const totalEarnings = history.reduce((s, h) => s + h.earning, 0);
+  const { profile, ready, usingFirebase, isRider } = useAuth();
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const riderId = profile?.uid ?? "";
+
+  useEffect(() => {
+    if (!ready || !usingFirebase || !riderId || !isRider) {
+      setOrders([]);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    const unsub = subscribeRiderHistory(
+      riderId,
+      (list) => {
+        setOrders(list);
+        setError(null);
+        setLoading(false);
+      },
+      (err) => {
+        setError(err.message);
+        setLoading(false);
+      },
+    );
+    return unsub;
+  }, [ready, usingFirebase, riderId, isRider]);
+
+  const totalEarnings = useMemo(
+    () => orders.reduce((sum, o) => sum + (o.deliveryFee ?? 0), 0),
+    [orders],
+  );
 
   return (
     <div className="animate-fade-up px-4 py-4">
       <h1 className="text-xl font-bold text-secondary">History</h1>
       <p className="text-sm text-muted">Completed deliveries</p>
+
+      {error && (
+        <p className="mt-2 rounded-xl bg-danger-light px-3 py-2 text-xs text-danger">
+          {error}
+        </p>
+      )}
 
       <div className="mt-4 rounded-[20px] bg-secondary p-5 text-white shadow-card">
         <p className="text-sm text-white/70">Earnings (recent)</p>
@@ -53,31 +72,48 @@ export default function RiderHistoryPage() {
           {formatCedi(totalEarnings)}
         </p>
         <p className="mt-1 text-xs text-white/60">
-          {history.length} completed deliveries
+          {orders.length} completed{" "}
+          {orders.length === 1 ? "delivery" : "deliveries"}
         </p>
       </div>
 
       <div className="mt-4 space-y-2.5">
-        {history.map((h) => (
-          <article
-            key={h.id}
-            className="rounded-[20px] bg-white p-4 shadow-card"
-          >
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="font-bold text-secondary">{h.customer}</p>
-                <p className="text-xs text-muted">
-                  {h.orderId} · {h.address}
-                </p>
-              </div>
-              <p className="font-bold text-accent">+{formatCedi(h.earning)}</p>
-            </div>
-            <div className="mt-2 flex justify-between text-xs text-muted">
-              <span>Collected {formatCedi(h.amount)}</span>
-              <span>{h.time}</span>
-            </div>
-          </article>
-        ))}
+        {loading ? (
+          <p className="py-8 text-center text-sm text-muted">Loading…</p>
+        ) : orders.length === 0 ? (
+          <div className="rounded-[20px] bg-white p-8 text-center shadow-card">
+            <p className="font-semibold text-secondary">No completed deliveries</p>
+            <p className="mt-1 text-sm text-muted">
+              Finished deliveries will show here with your earnings.
+            </p>
+          </div>
+        ) : (
+          orders.map((o) => {
+            const earning = o.deliveryFee ?? 0;
+            return (
+              <article
+                key={o.id}
+                className="rounded-[20px] bg-white p-4 shadow-card"
+              >
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="font-bold text-secondary">{o.customerName}</p>
+                    <p className="text-xs text-muted">
+                      {o.id} · {o.address}
+                    </p>
+                  </div>
+                  <p className="font-bold text-accent">
+                    +{formatCedi(earning)}
+                  </p>
+                </div>
+                <div className="mt-2 flex justify-between text-xs text-muted">
+                  <span>Collected {formatCedi(o.total)}</span>
+                  <span>{historyTime(o)}</span>
+                </div>
+              </article>
+            );
+          })
+        )}
       </div>
     </div>
   );
