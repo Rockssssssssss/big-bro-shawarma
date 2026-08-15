@@ -170,6 +170,13 @@ export default function RiderHomePage() {
                 </div>
               </div>
 
+              {d.note ? (
+                <p className="mt-2 rounded-2xl bg-bg px-3 py-2 text-xs text-secondary">
+                  <span className="font-semibold">Note: </span>
+                  {d.note}
+                </p>
+              ) : null}
+
               <p className="mt-3 text-sm">
                 <span className="text-muted">Collect </span>
                 <span className="font-bold text-secondary">

@@ -5,11 +5,14 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import {
   Banknote,
+  Bike,
   Check,
   Clock,
   CreditCard,
   MapPin,
+  Pencil,
   Smartphone,
+  Store,
 } from "lucide-react";
 import { PageHeader } from "./page-header";
 import { Button } from "@/components/ui/button";
@@ -29,7 +32,12 @@ import {
 import { isMapboxConfigured } from "@/lib/mapbox";
 import { extras, restaurant } from "@/lib/data";
 import type { MapboxSelectedAddress } from "@/lib/mapbox";
-import type { CustomerVoucher, OrderItem, PaymentMethod } from "@/lib/types";
+import type {
+  CustomerVoucher,
+  FulfillmentType,
+  OrderItem,
+  PaymentMethod,
+} from "@/lib/types";
 import {
   cn,
   formatCedi,
@@ -53,37 +61,43 @@ const AddressSearch = dynamic(
   },
 );
 
-const paymentMeta: {
+function paymentOptions(fulfillment: FulfillmentType): {
   id: PaymentMethod;
   title: string;
   subtitle: string;
   icon: typeof Smartphone;
-}[] = [
-  {
-    id: "cash",
-    title: "Cash on Delivery",
-    subtitle: "Pay the rider",
-    icon: Banknote,
-  },
-  {
-    id: "momo",
-    title: "Mobile Money",
-    subtitle: "MTN MoMo · Telecel Cash",
-    icon: Smartphone,
-  },
-  {
-    id: "card",
-    title: "Card",
-    subtitle: "Visa · Mastercard",
-    icon: CreditCard,
-  },
-];
+}[] {
+  return [
+    {
+      id: "cash",
+      title: fulfillment === "pickup" ? "Cash on Pickup" : "Cash on Delivery",
+      subtitle:
+        fulfillment === "pickup" ? "Pay at the restaurant" : "Pay the rider",
+      icon: Banknote,
+    },
+    {
+      id: "momo",
+      title: "Mobile Money",
+      subtitle: "MTN MoMo · Telecel Cash",
+      icon: Smartphone,
+    },
+    {
+      id: "card",
+      title: "Card",
+      subtitle: "Visa · Mastercard",
+      icon: CreditCard,
+    },
+  ];
+}
 
 export function CheckoutView() {
   const router = useRouter();
   const { profile, user, usingFirebase } = useAuth();
-  const { lines, subtotal, deliveryFee, clear, lineTotal } = useCart();
+  const { lines, subtotal, deliveryFee: cartDeliveryFee, clear, lineTotal } =
+    useCart();
   const { payments, getProduct } = useCatalog();
+  const [fulfillmentType, setFulfillmentType] =
+    useState<FulfillmentType>("delivery");
   const [address, setAddress] = useState("");
   const [addressSelected, setAddressSelected] = useState(false);
   const [coords, setCoords] = useState<{
@@ -100,6 +114,15 @@ export function CheckoutView() {
   const [vouchers, setVouchers] = useState<CustomerVoucher[]>([]);
   const [selectedVoucherId, setSelectedVoucherId] = useState<string | null>(
     null,
+  );
+  const [note, setNote] = useState("");
+
+  const isPickup = fulfillmentType === "pickup";
+  const deliveryFee = isPickup ? 0 : cartDeliveryFee;
+  const NOTE_MAX = 200;
+  const paymentMeta = useMemo(
+    () => paymentOptions(fulfillmentType),
+    [fulfillmentType],
   );
 
   useEffect(() => {
@@ -141,7 +164,7 @@ export function CheckoutView() {
 
   const enabledCount = useMemo(
     () => paymentMeta.filter((p) => payments[p.id]).length,
-    [payments],
+    [payments, paymentMeta],
   );
 
   useEffect(() => {
@@ -149,7 +172,7 @@ export function CheckoutView() {
       const first = paymentMeta.find((p) => payments[p.id]);
       if (first) setPayment(first.id);
     }
-  }, [payments, payment]);
+  }, [payments, payment, paymentMeta]);
 
   const isGuest = usingFirebase && !user;
 
@@ -158,7 +181,7 @@ export function CheckoutView() {
     : address.trim().length >= 5;
 
   const canPlaceOrder =
-    addressReady &&
+    (isPickup || addressReady) &&
     isValidGhanaPhone(phone) &&
     enabledCount > 0 &&
     !!payments[payment] &&
@@ -190,7 +213,7 @@ export function CheckoutView() {
       router.push("/app/login");
       return;
     }
-    if (!addressReady) {
+    if (!isPickup && !addressReady) {
       setError(
         isMapboxConfigured()
           ? "Please select a delivery location from the suggestions."
@@ -234,9 +257,11 @@ export function CheckoutView() {
           customerEmail: profile?.email ?? user?.email ?? undefined,
           customerName: profile?.name ?? "Guest",
           customerPhone: normalizeGhanaPhone(phone),
-          address: address.trim(),
-          landmark: landmark.trim(),
-          ...(coords
+          address: isPickup ? restaurant.address : address.trim(),
+          landmark: isPickup
+            ? `Pickup at ${restaurant.name}`
+            : landmark.trim(),
+          ...(!isPickup && coords
             ? { latitude: coords.latitude, longitude: coords.longitude }
             : {}),
           items,
@@ -247,6 +272,8 @@ export function CheckoutView() {
             ? { discount, voucherId: selectedVoucher.id }
             : {}),
           paymentMethod: payment,
+          fulfillmentType,
+          ...(note.trim() ? { note: note.trim().slice(0, NOTE_MAX) } : {}),
         });
 
         if (user?.uid && selectedVoucher && discount > 0) {
@@ -265,11 +292,59 @@ export function CheckoutView() {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="shrink-0">
+      {/* Fixed header + fulfillment selector — content scrolls beneath */}
+      <div className="relative z-10 shrink-0 border-b border-border/60 bg-bg/95 backdrop-blur-sm">
         <PageHeader title="Checkout" backHref="/app/cart" />
+        <div className="px-4 pb-3">
+          <p className="mb-2 text-sm font-semibold text-secondary">
+            Where should we send it?
+          </p>
+          <div
+            className="flex rounded-xl bg-white p-1 shadow-soft"
+            role="tablist"
+            aria-label="Delivery or pickup"
+          >
+            <button
+              type="button"
+              role="tab"
+              aria-selected={fulfillmentType === "delivery"}
+              onClick={() => {
+                setFulfillmentType("delivery");
+                setError(null);
+              }}
+              className={cn(
+                "flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 text-sm font-semibold transition",
+                fulfillmentType === "delivery"
+                  ? "bg-primary text-white shadow-soft"
+                  : "text-muted",
+              )}
+            >
+              <Bike className="h-4 w-4" />
+              Delivery
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={fulfillmentType === "pickup"}
+              onClick={() => {
+                setFulfillmentType("pickup");
+                setError(null);
+              }}
+              className={cn(
+                "flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 text-sm font-semibold transition",
+                fulfillmentType === "pickup"
+                  ? "bg-primary text-white shadow-soft"
+                  : "text-muted",
+              )}
+            >
+              <Store className="h-4 w-4" />
+              Pickup
+            </button>
+          </div>
+        </div>
       </div>
 
-      <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-4 pb-4 no-scrollbar">
+      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 pb-4 pt-4 no-scrollbar">
         {!user && usingFirebase && (
           <div className="rounded-2xl bg-primary-light px-4 py-3 text-sm text-secondary">
             Please{" "}
@@ -284,56 +359,102 @@ export function CheckoutView() {
           </div>
         )}
 
+        {isPickup ? (
+          <section className="rounded-[20px] bg-white p-4 shadow-card">
+            <div className="mb-3 flex items-center gap-2">
+              <Store className="h-4 w-4 text-primary" />
+              <h2 className="font-semibold text-secondary">Pickup</h2>
+            </div>
+            <div className="rounded-2xl bg-bg px-3.5 py-3">
+              <p className="font-semibold text-secondary">{restaurant.name}</p>
+              <p className="mt-0.5 text-sm text-muted">{restaurant.address}</p>
+            </div>
+            <label className="mt-3 block">
+              <span className="mb-1.5 block text-xs font-medium text-muted">
+                Phone
+              </span>
+              <Input
+                type="tel"
+                inputMode="numeric"
+                maxLength={10}
+                value={phone}
+                onChange={(e) => setPhone(normalizeGhanaPhone(e.target.value))}
+                placeholder={GHANA_PHONE_PLACEHOLDER}
+                className="bg-bg"
+                aria-invalid={phone.length > 0 && !isValidGhanaPhone(phone)}
+              />
+            </label>
+          </section>
+        ) : (
+          <section className="rounded-[20px] bg-white p-4 shadow-card">
+            <div className="mb-3 flex items-center gap-2">
+              <MapPin className="h-4 w-4 text-primary" />
+              <h2 className="font-semibold text-secondary">Delivery address</h2>
+            </div>
+
+            <AddressSearch
+              value={address}
+              onChange={handleAddressType}
+              onSelect={handleAddressSelect}
+              selected={addressSelected}
+            />
+
+            <label className="mt-3 block">
+              <span className="mb-1.5 block text-xs font-medium text-muted">
+                Phone
+              </span>
+              <Input
+                type="tel"
+                inputMode="numeric"
+                maxLength={10}
+                value={phone}
+                onChange={(e) => setPhone(normalizeGhanaPhone(e.target.value))}
+                placeholder={GHANA_PHONE_PLACEHOLDER}
+                className="bg-bg"
+                aria-invalid={phone.length > 0 && !isValidGhanaPhone(phone)}
+              />
+            </label>
+            <label className="mt-3 block">
+              <span className="mb-1.5 block text-xs font-medium text-muted">
+                Landmark / House Description
+              </span>
+              <Input
+                value={landmark}
+                maxLength={120}
+                onChange={(e) => setLandmark(e.target.value.slice(0, 120))}
+                placeholder="Apartment, Landmark, House Number, Floor, Behind..."
+                className="bg-bg"
+              />
+              <span className="mt-1 block text-right text-[10px] text-muted">
+                {landmark.length}/120
+              </span>
+            </label>
+            <div className="mt-3 inline-flex items-center gap-2 rounded-full bg-bg px-3 py-2 text-sm text-secondary">
+              <Clock className="h-4 w-4 text-accent" />
+              Estimated delivery {restaurant.deliveryEta}
+            </div>
+          </section>
+        )}
+
         <section className="rounded-[20px] bg-white p-4 shadow-card">
-          <div className="mb-3 flex items-center gap-2">
-            <MapPin className="h-4 w-4 text-primary" />
-            <h2 className="font-semibold text-secondary">Delivery Address</h2>
+          <div className="mb-2 flex items-center gap-2">
+            <Pencil className="h-3.5 w-3.5 text-secondary" />
+            <h2 className="text-sm font-semibold text-secondary">
+              Order note{" "}
+              <span className="font-normal text-muted">(optional)</span>
+            </h2>
           </div>
-
-          <AddressSearch
-            value={address}
-            onChange={handleAddressType}
-            onSelect={handleAddressSelect}
-            selected={addressSelected}
+          <textarea
+            value={note}
+            maxLength={NOTE_MAX}
+            rows={2}
+            onChange={(e) => setNote(e.target.value.slice(0, NOTE_MAX))}
+            placeholder="Any special instructions?"
+            className="w-full resize-none rounded-xl border border-border bg-bg px-3 py-2.5 text-sm text-secondary outline-none placeholder:text-muted focus:border-primary focus:ring-1 focus:ring-primary"
           />
-
-          <label className="mt-3 block">
-            <span className="mb-1.5 block text-xs font-medium text-muted">
-              Phone
-            </span>
-            <Input
-              type="tel"
-              inputMode="numeric"
-              maxLength={10}
-              value={phone}
-              onChange={(e) => setPhone(normalizeGhanaPhone(e.target.value))}
-              placeholder={GHANA_PHONE_PLACEHOLDER}
-              className="bg-bg"
-              aria-invalid={phone.length > 0 && !isValidGhanaPhone(phone)}
-            />
-            <span className="mt-1 block text-[10px] text-muted">
-              10 digits starting with 0
-            </span>
-          </label>
-          <label className="mt-3 block">
-            <span className="mb-1.5 block text-xs font-medium text-muted">
-              Landmark / House Description
-            </span>
-            <Input
-              value={landmark}
-              maxLength={120}
-              onChange={(e) => setLandmark(e.target.value.slice(0, 120))}
-              placeholder="Apartment, Landmark, House Number, Floor, Behind..."
-              className="bg-bg"
-            />
-            <span className="mt-1 block text-right text-[10px] text-muted">
-              {landmark.length}/120
-            </span>
-          </label>
-          <div className="mt-3 inline-flex items-center gap-2 rounded-full bg-bg px-3 py-2 text-sm text-secondary">
-            <Clock className="h-4 w-4 text-accent" />
-            Estimated delivery {restaurant.deliveryEta}
-          </div>
+          <span className="mt-1 block text-right text-[10px] text-muted">
+            {note.length}/{NOTE_MAX}
+          </span>
         </section>
 
         <section>
@@ -504,12 +625,14 @@ export function CheckoutView() {
                 {formatCedi(subtotal)}
               </span>
             </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-muted">Delivery Fee</span>
-              <span className="font-semibold text-secondary">
-                {formatCedi(deliveryFee)}
-              </span>
-            </div>
+            {!isPickup && (
+              <div className="flex justify-between text-sm">
+                <span className="text-muted">Delivery Fee</span>
+                <span className="font-semibold text-secondary">
+                  {formatCedi(deliveryFee)}
+                </span>
+              </div>
+            )}
             {discount > 0 && (
               <div className="flex justify-between text-sm">
                 <span className="text-muted">Voucher</span>

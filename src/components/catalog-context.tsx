@@ -12,33 +12,42 @@ import {
 import { products as seedProducts } from "@/lib/data";
 import { isFirebaseConfigured } from "@/lib/firebase";
 import {
+  defaultBusiness,
   defaultPayments,
   defaultHomeSettings,
   deleteProduct as fbDeleteProduct,
+  saveBusinessSettings,
   savePayments,
   saveProduct,
   saveHomeSettings,
   seedFirestore,
+  subscribeBusinessSettings,
   subscribePayments,
   subscribeProducts,
   subscribeHomeSettings,
   type PaymentSettings,
 } from "@/lib/firebase/catalog";
-import type { HomeSettingsDoc } from "@/lib/firebase/schema";
+import type {
+  BusinessSettingsDoc,
+  HomeSettingsDoc,
+} from "@/lib/firebase/schema";
 import { uploadProductImage } from "@/lib/firebase/storage";
 import type { PaymentMethod, Product } from "@/lib/types";
 
 const PRODUCTS_KEY = "bb-products";
 const PAYMENTS_KEY = "bb-payments";
 const HOME_KEY = "bb-home-settings";
+const BUSINESS_KEY = "bb-business-settings";
 
 export type { PaymentSettings };
 export type HomeSettings = HomeSettingsDoc;
+export type BusinessSettings = BusinessSettingsDoc;
 
 interface CatalogContextValue {
   products: Product[];
   payments: PaymentSettings;
   homeSettings: HomeSettings;
+  businessSettings: BusinessSettings;
   ready: boolean;
   usingFirebase: boolean;
   firebaseError: string | null;
@@ -53,6 +62,7 @@ interface CatalogContextValue {
   setPaymentEnabled: (method: PaymentMethod, enabled: boolean) => Promise<void>;
   setPayments: (next: PaymentSettings) => Promise<void>;
   saveHomeSettings: (next: HomeSettings) => Promise<void>;
+  saveBusinessSettings: (next: BusinessSettings) => Promise<void>;
   resetCatalog: () => Promise<void>;
   seedDatabase: () => Promise<void>;
 }
@@ -111,6 +121,8 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
   const [homeSettings, setHomeSettingsState] = useState<HomeSettings>(
     defaultHomeSettings(),
   );
+  const [businessSettings, setBusinessSettingsState] =
+    useState<BusinessSettings>(defaultBusiness);
   const [ready, setReady] = useState(false);
   const [usingFirebase, setUsingFirebase] = useState(false);
   const [firebaseError, setFirebaseError] = useState<string | null>(null);
@@ -120,6 +132,7 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
       setProducts(readJson(PRODUCTS_KEY, seedProducts));
       setPaymentsState(readJson(PAYMENTS_KEY, defaultPayments));
       setHomeSettingsState(readJson(HOME_KEY, defaultHomeSettings()));
+      setBusinessSettingsState(readJson(BUSINESS_KEY, defaultBusiness));
       setUsingFirebase(false);
       setReady(true);
       return;
@@ -129,6 +142,7 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
     let unsubProducts: (() => void) | undefined;
     let unsubPayments: (() => void) | undefined;
     let unsubHome: (() => void) | undefined;
+    let unsubBusiness: (() => void) | undefined;
 
     try {
       unsubProducts = subscribeProducts(
@@ -157,12 +171,17 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
         (h) => setHomeSettingsState(h),
         (err) => console.error(err),
       );
+      unsubBusiness = subscribeBusinessSettings(
+        (b) => setBusinessSettingsState(b),
+        (err) => console.error(err),
+      );
     } catch (err) {
       const message = err instanceof Error ? err.message : "Firebase error";
       setFirebaseError(message);
       setProducts(readJson(PRODUCTS_KEY, seedProducts));
       setPaymentsState(readJson(PAYMENTS_KEY, defaultPayments));
       setHomeSettingsState(readJson(HOME_KEY, defaultHomeSettings()));
+      setBusinessSettingsState(readJson(BUSINESS_KEY, defaultBusiness));
       setUsingFirebase(false);
       setReady(true);
     }
@@ -171,6 +190,7 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
       unsubProducts?.();
       unsubPayments?.();
       unsubHome?.();
+      unsubBusiness?.();
     };
   }, []);
 
@@ -189,6 +209,11 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
     if (!ready || usingFirebase) return;
     localStorage.setItem(HOME_KEY, JSON.stringify(homeSettings));
   }, [homeSettings, ready, usingFirebase]);
+
+  useEffect(() => {
+    if (!ready || usingFirebase) return;
+    localStorage.setItem(BUSINESS_KEY, JSON.stringify(businessSettings));
+  }, [businessSettings, ready, usingFirebase]);
 
   const getProduct = useCallback(
     (id: string) => products.find((p) => p.id === id),
@@ -301,6 +326,18 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
     [usingFirebase],
   );
 
+  const persistBusinessSettings = useCallback(
+    async (next: BusinessSettings) => {
+      if (usingFirebase && isFirebaseConfigured()) {
+        await saveBusinessSettings(next);
+        // realtime listener updates state
+      } else {
+        setBusinessSettingsState(next);
+      }
+    },
+    [usingFirebase],
+  );
+
   const resetCatalog = useCallback(async () => {
     if (usingFirebase && isFirebaseConfigured()) {
       await seedFirestore();
@@ -309,9 +346,11 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
     setProducts(seedProducts);
     setPaymentsState(defaultPayments);
     setHomeSettingsState(defaultHomeSettings());
+    setBusinessSettingsState(defaultBusiness);
     localStorage.removeItem(PRODUCTS_KEY);
     localStorage.removeItem(PAYMENTS_KEY);
     localStorage.removeItem(HOME_KEY);
+    localStorage.removeItem(BUSINESS_KEY);
   }, [usingFirebase]);
 
   const seedDatabase = useCallback(async () => {
@@ -326,6 +365,7 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
       products,
       payments,
       homeSettings,
+      businessSettings,
       ready,
       usingFirebase,
       firebaseError,
@@ -340,6 +380,7 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
       setPaymentEnabled,
       setPayments,
       saveHomeSettings: persistHomeSettings,
+      saveBusinessSettings: persistBusinessSettings,
       resetCatalog,
       seedDatabase,
     }),
@@ -347,6 +388,7 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
       products,
       payments,
       homeSettings,
+      businessSettings,
       ready,
       usingFirebase,
       firebaseError,
@@ -361,6 +403,7 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
       setPaymentEnabled,
       setPayments,
       persistHomeSettings,
+      persistBusinessSettings,
       resetCatalog,
       seedDatabase,
     ],

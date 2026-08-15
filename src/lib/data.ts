@@ -587,7 +587,7 @@ export const faqs = [
     id: "f9",
     category: "Orders",
     q: "What are your opening hours?",
-    a: "We're open every day from 11 AM to 11 PM.",
+    a: "We're open according to the hours shown in the app.",
   },
 ];
 
@@ -615,6 +615,24 @@ export const orderStatusLabel: Record<Order["status"], string> = {
   delivered: "Delivered",
   cancelled: "Cancelled",
 };
+
+/** Safe default: legacy orders without fulfillmentType are delivery. */
+export function getFulfillmentType(
+  order: Pick<Order, "fulfillmentType"> | null | undefined,
+): "delivery" | "pickup" {
+  return order?.fulfillmentType === "pickup" ? "pickup" : "delivery";
+}
+
+/** Status labels that adapt for pickup (reuses existing OrderStatus values). */
+export function orderStatusLabelFor(
+  order: Pick<Order, "status" | "fulfillmentType">,
+): string {
+  if (getFulfillmentType(order) === "pickup") {
+    if (order.status === "out-for-delivery") return "Ready for Pickup";
+    if (order.status === "delivered") return "Picked Up";
+  }
+  return orderStatusLabel[order.status];
+}
 
 export const adminStats = {
   todaySales: 2840,

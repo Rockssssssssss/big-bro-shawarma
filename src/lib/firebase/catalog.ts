@@ -144,6 +144,25 @@ export async function fetchBusinessSettings(): Promise<BusinessSettingsDoc> {
   return { ...defaultBusiness, ...(snap.data() as BusinessSettingsDoc) };
 }
 
+/** Live restaurant business settings (hours, open/busy, delivery fee/radius). */
+export function subscribeBusinessSettings(
+  onData: (settings: BusinessSettingsDoc) => void,
+  onError?: (err: Error) => void,
+): Unsubscribe {
+  const db = requireDb();
+  return onSnapshot(
+    doc(db, COLLECTIONS.settings, SETTINGS_DOCS.business),
+    (snap) => {
+      if (!snap.exists()) {
+        onData(defaultBusiness);
+        return;
+      }
+      onData({ ...defaultBusiness, ...(snap.data() as BusinessSettingsDoc) });
+    },
+    (err) => onError?.(err),
+  );
+}
+
 export function subscribeHomeSettings(
   onData: (settings: HomeSettingsDoc) => void,
   onError?: (err: Error) => void,

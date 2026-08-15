@@ -15,7 +15,14 @@ import {
 import { getDb } from "@/lib/firebase";
 import { COLLECTIONS } from "@/lib/firebase/schema";
 import { stripUndefined } from "@/lib/firebase/sanitize";
-import type { Order, OrderStatus, PaymentMethod, OrderItem } from "@/lib/types";
+import { getFulfillmentType } from "@/lib/data";
+import type {
+  FulfillmentType,
+  Order,
+  OrderStatus,
+  PaymentMethod,
+  OrderItem,
+} from "@/lib/types";
 
 function requireDb() {
   const db = getDb();
@@ -54,6 +61,10 @@ export type CreateOrderInput = {
   discount?: number;
   voucherId?: string;
   paymentMethod: PaymentMethod;
+  /** Defaults to delivery when omitted. */
+  fulfillmentType?: FulfillmentType;
+  /** Optional customer note (trimmed; max 200 chars). */
+  note?: string;
 };
 
 export type RiderInfo = { id: string; name: string; phone: string; eta?: string };
@@ -64,6 +75,11 @@ export async function createOrder(input: CreateOrderInput): Promise<Order> {
   const now = Date.now();
   const { date, time } = todayParts();
 
+  const fulfillmentType: FulfillmentType =
+    input.fulfillmentType === "pickup" ? "pickup" : "delivery";
+  const deliveryFee =
+    fulfillmentType === "pickup" ? 0 : input.deliveryFee;
+
   const order: Order = {
     id,
     customerName: input.customerName,
@@ -73,9 +89,10 @@ export async function createOrder(input: CreateOrderInput): Promise<Order> {
     date,
     time,
     status: "received",
+    fulfillmentType,
     items: input.items,
     subtotal: input.subtotal,
-    deliveryFee: input.deliveryFee,
+    deliveryFee,
     total: input.total,
     paymentMethod: input.paymentMethod,
     reviewed: false,
@@ -89,6 +106,8 @@ export async function createOrder(input: CreateOrderInput): Promise<Order> {
     order.discount = input.discount;
   }
   if (input.voucherId) order.voucherId = input.voucherId;
+  const note = input.note?.trim().slice(0, 200);
+  if (note) order.note = note;
   if (
     typeof input.latitude === "number" &&
     Number.isFinite(input.latitude) &&
@@ -151,6 +170,8 @@ export function subscribeCustomerOrders(
  * - Active deliveries assigned to this rider (out-for-delivery)
  */
 export function isPendingOfferForRider(order: Order, riderId: string): boolean {
+  // Pickup orders never enter the rider workflow.
+  if (getFulfillmentType(order) === "pickup") return false;
   const declined = order.declinedBy ?? [];
   return (
     order.status === "preparing" &&
@@ -168,6 +189,7 @@ export function subscribeActiveDeliveries(
   return subscribeAllOrders((all) => {
     onData(
       all.filter((o) => {
+        if (getFulfillmentType(o) === "pickup") return false;
         const isPendingOffer = isPendingOfferForRider(o, riderId);
         const isMyActive =
           o.status === "out-for-delivery" && o.rider?.id === riderId;
@@ -226,16 +248,40 @@ export async function updateOrderStatus(
 }
 
 /**
- * Admin opens the order to all registered riders.
+ * Admin opens ONE specific order to all registered riders.
+ * Updates only the Firestore document for `orderId` — never a list/collection.
  * Keeps status as preparing; does not assign a rider yet.
  */
 export async function offerOrderToRiders(orderId: string): Promise<void> {
+  if (!orderId || typeof orderId !== "string") {
+    throw new Error("orderId is required to offer an order to riders.");
+  }
   const db = requireDb();
-  await updateDoc(doc(db, COLLECTIONS.orders, orderId), {
-    riderRequested: true,
-    declinedBy: [],
-    rider: deleteField(),
-    updatedAt: Date.now(),
+  const ref = doc(db, COLLECTIONS.orders, orderId);
+
+  await runTransaction(db, async (tx) => {
+    const snap = await tx.get(ref);
+    if (!snap.exists()) {
+      throw new Error(`Order ${orderId} not found.`);
+    }
+    const data = snap.data() as Order;
+    if (getFulfillmentType(data) === "pickup") {
+      throw new Error(
+        `Order ${orderId} is a pickup order and cannot be offered to riders.`,
+      );
+    }
+    if (data.status !== "preparing") {
+      throw new Error(
+        `Order ${orderId} must be preparing before assigning a rider.`,
+      );
+    }
+    // Single-document write scoped to this order ID only.
+    tx.update(ref, {
+      riderRequested: true,
+      declinedBy: [],
+      rider: deleteField(),
+      updatedAt: Date.now(),
+    });
   });
 }
 
@@ -245,6 +291,10 @@ export async function assignRiderToOrder(
   rider: RiderInfo,
 ): Promise<void> {
   const db = requireDb();
+  const existing = await getOrder(orderId);
+  if (existing && getFulfillmentType(existing) === "pickup") {
+    throw new Error("Pickup orders cannot be assigned to riders.");
+  }
   await updateDoc(
     doc(db, COLLECTIONS.orders, orderId),
     stripUndefined({
@@ -273,6 +323,9 @@ export async function acceptOrderAsRider(
         throw new Error("Order not found.");
       }
       const data = snap.data() as Order;
+      if (getFulfillmentType(data) === "pickup") {
+        throw new Error("Pickup orders cannot be accepted by riders.");
+      }
       if (data.rider || data.status === "out-for-delivery") {
         throw new Error(
           "This order has already been accepted by another rider.",

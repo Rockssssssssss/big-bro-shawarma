@@ -9,6 +9,9 @@ export type OrderStatus =
   | "delivered"
   | "cancelled";
 
+/** How the customer receives the order. Missing on legacy orders → treat as delivery. */
+export type FulfillmentType = "delivery" | "pickup";
+
 export type PaymentMethod = "momo" | "cash" | "card";
 
 export type RiderStatus = "available" | "busy" | "offline";
@@ -80,10 +83,17 @@ export interface Order {
   date: string;
   time: string;
   status: OrderStatus;
+  /**
+   * Delivery or pickup. Optional for backward compatibility —
+   * orders without this field are treated as delivery.
+   */
+  fulfillmentType?: FulfillmentType;
   items: OrderItem[];
   subtotal: number;
   deliveryFee: number;
   total: number;
+  /** Optional customer instructions (max ~200 chars). */
+  note?: string;
   /** Loyalty voucher discount applied at checkout (after explicit redemption). */
   discount?: number;
   voucherId?: string;

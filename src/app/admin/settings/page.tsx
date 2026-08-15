@@ -78,18 +78,20 @@ export default function AdminSettingsPage() {
     products,
     payments,
     homeSettings,
+    businessSettings,
     setPaymentEnabled,
     setPayments,
     saveHomeSettings,
+    saveBusinessSettings,
     resetCatalog,
     seedDatabase,
     usingFirebase,
   } = useCatalog();
-  const [open, setOpen] = useState(true);
-  const [busy, setBusy] = useState(false);
-  const [radius, setRadius] = useState(restaurant.deliveryRadiusKm);
-  const [fee, setFee] = useState(restaurant.deliveryFee);
-  const [hours, setHours] = useState(restaurant.hours);
+  const [open, setOpen] = useState(businessSettings.open);
+  const [busy, setBusy] = useState(businessSettings.busyMode);
+  const [radius, setRadius] = useState(businessSettings.deliveryRadiusKm);
+  const [fee, setFee] = useState(businessSettings.deliveryFee);
+  const [hours, setHours] = useState(businessSettings.hours);
   const [saved, setSaved] = useState(false);
   const [homeSaved, setHomeSaved] = useState(false);
   const [seeding, setSeeding] = useState(false);
@@ -105,6 +107,14 @@ export default function AdminSettingsPage() {
   useEffect(() => {
     setLocalHome(homeSettings);
   }, [homeSettings]);
+
+  useEffect(() => {
+    setOpen(businessSettings.open);
+    setBusy(businessSettings.busyMode);
+    setRadius(businessSettings.deliveryRadiusKm);
+    setFee(businessSettings.deliveryFee);
+    setHours(businessSettings.hours);
+  }, [businessSettings]);
 
   async function togglePayment(id: PaymentMethod) {
     const next = { ...paymentState, [id]: !paymentState[id] };
@@ -343,10 +353,24 @@ export default function AdminSettingsPage() {
         size="lg"
         className="w-full"
         onClick={async () => {
-          if (localPayments) await setPayments(localPayments);
-          setSaved(true);
-          setMsg("Settings saved.");
-          setTimeout(() => setSaved(false), 2000);
+          try {
+            if (localPayments) await setPayments(localPayments);
+            await saveBusinessSettings({
+              ...businessSettings,
+              open,
+              busyMode: busy,
+              deliveryRadiusKm: radius,
+              deliveryFee: fee,
+              hours: hours.trim() || businessSettings.hours,
+            });
+            setSaved(true);
+            setMsg("Settings saved — opening hours are live.");
+            setTimeout(() => setSaved(false), 2000);
+          } catch (err) {
+            setMsg(
+              err instanceof Error ? err.message : "Could not save settings",
+            );
+          }
         }}
       >
         {saved ? "Saved!" : "Save Settings"}

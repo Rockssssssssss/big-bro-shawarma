@@ -15,6 +15,7 @@ import {
 import { PageHeader } from "./page-header";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/auth-context";
+import { useCatalog } from "@/components/catalog-context";
 import { restaurant } from "@/lib/data";
 import { formatCedi, maskEmail, maskPhone } from "@/lib/utils";
 
@@ -27,6 +28,7 @@ const settings = [
 
 export function ProfileView() {
   const { profile, user, logout, usingFirebase } = useAuth();
+  const { businessSettings } = useCatalog();
   const router = useRouter();
 
   const name = profile?.name || (user ? "Guest" : "Welcome");
@@ -107,7 +109,7 @@ export function ProfileView() {
               <Phone className="h-4 w-4 text-primary" />
               {restaurant.phone}
             </p>
-            <p className="text-xs text-muted">{restaurant.hours}</p>
+            <p className="text-xs text-muted">{businessSettings.hours}</p>
           </div>
         </section>
 

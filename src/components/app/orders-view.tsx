@@ -8,7 +8,7 @@ import { PageHeader } from "./page-header";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/auth-context";
 import { useCart } from "@/components/cart-context";
-import { orderStatusLabel } from "@/lib/data";
+import { getFulfillmentType, orderStatusLabelFor } from "@/lib/data";
 import {
   subscribeCustomerOrders,
 } from "@/lib/firebase/orders";
@@ -22,7 +22,7 @@ const steps: OrderStatus[] = [
   "delivered",
 ];
 
-function StatusBadge({ status }: { status: OrderStatus }) {
+function StatusBadge({ order }: { order: Order }) {
   const colors: Record<OrderStatus, string> = {
     received: "bg-primary-light text-primary",
     preparing: "bg-amber-100 text-amber-700",
@@ -34,17 +34,17 @@ function StatusBadge({ status }: { status: OrderStatus }) {
     <span
       className={cn(
         "rounded-full px-2.5 py-1 text-[11px] font-semibold",
-        colors[status],
+        colors[order.status],
       )}
     >
-      {orderStatusLabel[status]}
+      {orderStatusLabelFor(order)}
     </span>
   );
 }
 
-function Timeline({ status }: { status: OrderStatus }) {
-  if (status === "cancelled") return null;
-  const idx = steps.indexOf(status);
+function Timeline({ order }: { order: Order }) {
+  if (order.status === "cancelled") return null;
+  const idx = steps.indexOf(order.status);
   return (
     <div className="mt-4 space-y-0">
       {steps.map((step, i) => {
@@ -73,7 +73,10 @@ function Timeline({ status }: { status: OrderStatus }) {
                 done ? "font-medium text-secondary" : "text-muted",
               )}
             >
-              {orderStatusLabel[step]}
+              {orderStatusLabelFor({
+                status: step,
+                fulfillmentType: order.fulfillmentType,
+              })}
             </p>
           </div>
         );
@@ -171,8 +174,13 @@ export function OrdersView() {
                 <p className="mt-0.5 text-xs text-muted">
                   {order.date} · {order.time}
                 </p>
+                <p className="mt-1 text-[11px] font-semibold uppercase tracking-wide text-muted">
+                  {getFulfillmentType(order) === "pickup"
+                    ? "Pickup"
+                    : "Delivery"}
+                </p>
               </div>
-              <StatusBadge status={order.status} />
+              <StatusBadge order={order} />
             </div>
 
             <ul className="mt-3 space-y-1">
@@ -197,8 +205,10 @@ export function OrdersView() {
               order.status === "out-for-delivery" ||
               order.status === "received") && (
               <>
-                <Timeline status={order.status} />
-                {order.rider && order.status === "out-for-delivery" && (
+                <Timeline order={order} />
+                {getFulfillmentType(order) !== "pickup" &&
+                  order.rider &&
+                  order.status === "out-for-delivery" && (
                   <div className="mt-2 flex items-center justify-between rounded-2xl bg-bg p-3">
                     <div>
                       <p className="text-sm font-semibold text-secondary">
@@ -213,6 +223,12 @@ export function OrdersView() {
                       </Button>
                     </a>
                   </div>
+                )}
+                {getFulfillmentType(order) === "pickup" &&
+                  order.status === "out-for-delivery" && (
+                  <p className="mt-2 rounded-2xl bg-bg px-3 py-2.5 text-sm text-secondary">
+                    Your order is ready for pickup at the restaurant.
+                  </p>
                 )}
               </>
             )}

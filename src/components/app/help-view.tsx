@@ -6,6 +6,7 @@ import { PageHeader } from "./page-header";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/components/auth-context";
+import { useCatalog } from "@/components/catalog-context";
 import { isFirebaseConfigured } from "@/lib/firebase";
 import { createSupportMessage } from "@/lib/firebase/support";
 import { faqs, restaurant } from "@/lib/data";
@@ -24,6 +25,7 @@ const faqFilters = ["All", "Orders", "Delivery", "Payments", "Account"];
 
 export function HelpView() {
   const { profile, user } = useAuth();
+  const { businessSettings } = useCatalog();
   const [filter, setFilter] = useState("All");
   const [openFaq, setOpenFaq] = useState<string | null>(null);
   const [topic, setTopic] = useState<SupportCategory>("food-quality");
@@ -32,8 +34,19 @@ export function HelpView() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const liveFaqs = faqs.map((faq) =>
+    faq.id === "f9"
+      ? {
+          ...faq,
+          a: `We're open ${businessSettings.hours}.`,
+        }
+      : faq,
+  );
+
   const filtered =
-    filter === "All" ? faqs : faqs.filter((f) => f.category === filter);
+    filter === "All"
+      ? liveFaqs
+      : liveFaqs.filter((f) => f.category === filter);
 
   async function submitMessage() {
     if (!message.trim()) return;

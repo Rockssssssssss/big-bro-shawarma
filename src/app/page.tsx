@@ -4,6 +4,7 @@ import { Logo } from "@/components/logo";
 import { Button } from "@/components/ui/button";
 import { StarRating } from "@/components/star-rating";
 import { PopularProducts } from "@/components/website/popular-products";
+import { RestaurantHours } from "@/components/restaurant-hours";
 import { restaurant, reviews } from "@/lib/data";
 
 function SiteHeader() {
@@ -166,7 +167,9 @@ export default function LandingPage() {
           </p>
           <ul className="mt-6 space-y-2 text-sm text-secondary">
             <li>📍 {restaurant.address}</li>
-            <li>🕒 {restaurant.hours}</li>
+            <li>
+              🕒 <RestaurantHours />
+            </li>
             <li>📞 {restaurant.phones.join(" · ")}</li>
           </ul>
         </div>

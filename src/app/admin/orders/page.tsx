@@ -10,8 +10,9 @@ import {
   subscribeAllOrders,
   updateOrderStatus,
 } from "@/lib/firebase/orders";
+import { getFulfillmentType } from "@/lib/data";
 import type { Order, OrderStatus } from "@/lib/types";
-import { formatCedi } from "@/lib/utils";
+import { cn, formatCedi } from "@/lib/utils";
 import Link from "next/link";
 
 const columns: { id: OrderStatus; title: string }[] = [
@@ -24,17 +25,33 @@ const columns: { id: OrderStatus; title: string }[] = [
 function nextAction(
   status: OrderStatus,
   order: Order,
-): { label: string; next: OrderStatus } | null {
+): { label: string; next: OrderStatus; kind: "status" | "assign-rider" } | null {
+  const isPickup = getFulfillmentType(order) === "pickup";
   if (status === "received")
-    return { label: "Confirm / Prepare", next: "preparing" };
+    return { label: "Confirm / Prepare", next: "preparing", kind: "status" };
+  if (status === "preparing" && isPickup)
+    return {
+      label: "Ready for Pickup",
+      next: "out-for-delivery",
+      kind: "status",
+    };
   if (status === "preparing" && !order.riderRequested)
-    return { label: "Assign Rider", next: "out-for-delivery" };
+    return {
+      label: "Assign Rider",
+      next: "out-for-delivery",
+      kind: "assign-rider",
+    };
   if (status === "out-for-delivery")
-    return { label: "Mark Completed", next: "delivered" };
+    return {
+      label: isPickup ? "Mark Picked Up" : "Mark Completed",
+      next: "delivered",
+      kind: "status",
+    };
   return null;
 }
 
 function RiderBlock({ order }: { order: Order }) {
+  if (getFulfillmentType(order) === "pickup") return null;
   if (order.rider) {
     return (
       <div className="mt-2 rounded-xl bg-white px-2.5 py-2 text-xs">
@@ -72,16 +89,31 @@ export default function AdminOrdersPage() {
     return unsub;
   }, [ready, usingFirebase]);
 
-  async function move(id: string, next: OrderStatus) {
-    setBusyId(id);
+  /** Status transitions that are NOT rider assignment (Confirm / Complete). */
+  async function move(orderId: string, next: OrderStatus) {
+    if (!orderId) return;
+    setBusyId(orderId);
     try {
-      if (next === "out-for-delivery") {
-        await offerOrderToRiders(id);
-      } else {
-        await updateOrderStatus(id, next);
-      }
+      await updateOrderStatus(orderId, next);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Update failed");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  /**
+   * Assign Rider for exactly one order. Uses that card's order.id only —
+   * never iterates the orders list or shared selection state.
+   */
+  async function assignRider(orderId: string) {
+    if (!orderId) return;
+    setBusyId(orderId);
+    setError(null);
+    try {
+      await offerOrderToRiders(orderId);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Assign failed");
     } finally {
       setBusyId(null);
     }
@@ -144,6 +176,7 @@ export default function AdminOrdersPage() {
               <div className="space-y-3">
                 {cards.map((order) => {
                   const action = nextAction(order.status, order);
+                  const isPickup = getFulfillmentType(order) === "pickup";
                   return (
                     <article
                       key={order.id}
@@ -156,9 +189,21 @@ export default function AdminOrdersPage() {
                             {order.customerName}
                           </p>
                         </div>
-                        <p className="text-sm font-bold text-primary">
-                          {formatCedi(order.total)}
-                        </p>
+                        <div className="flex flex-col items-end gap-1">
+                          <p className="text-sm font-bold text-primary">
+                            {formatCedi(order.total)}
+                          </p>
+                          <span
+                            className={cn(
+                              "rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide",
+                              isPickup
+                                ? "bg-amber-100 text-amber-800"
+                                : "bg-primary-light text-primary",
+                            )}
+                          >
+                            {isPickup ? "Pickup" : "Delivery"}
+                          </span>
+                        </div>
                       </div>
                       <a
                         href={`tel:${order.customerPhone}`}
@@ -167,10 +212,18 @@ export default function AdminOrdersPage() {
                         <Phone className="h-3 w-3" />
                         {order.customerPhone}
                       </a>
-                      <p className="mt-2 text-xs text-secondary">
-                        {order.address}
-                      </p>
-                      <p className="text-xs text-muted">{order.landmark}</p>
+                      {isPickup ? (
+                        <p className="mt-2 text-xs font-medium text-secondary">
+                          Pickup at restaurant
+                        </p>
+                      ) : (
+                        <>
+                          <p className="mt-2 text-xs text-secondary">
+                            {order.address}
+                          </p>
+                          <p className="text-xs text-muted">{order.landmark}</p>
+                        </>
+                      )}
                       <ul className="mt-2 space-y-0.5 border-t border-border pt-2">
                         {order.items.map((item, i) => (
                           <li key={i} className="text-xs text-secondary">
@@ -178,6 +231,12 @@ export default function AdminOrdersPage() {
                           </li>
                         ))}
                       </ul>
+                      {order.note ? (
+                        <p className="mt-2 rounded-xl bg-white/80 px-2.5 py-2 text-[11px] text-secondary">
+                          <span className="font-semibold">Note: </span>
+                          {order.note}
+                        </p>
+                      ) : null}
                       <div className="mt-2 space-y-0.5 rounded-xl bg-white/70 px-2.5 py-2 text-[11px]">
                         <div className="flex justify-between gap-2 text-muted">
                           <span>Food Subtotal</span>
@@ -186,7 +245,9 @@ export default function AdminOrdersPage() {
                           </span>
                         </div>
                         <div className="flex justify-between gap-2 text-muted">
-                          <span>Delivery Fee</span>
+                          <span>
+                            {isPickup ? "Delivery Fee (Pickup)" : "Delivery Fee"}
+                          </span>
                           <span className="font-medium text-secondary">
                             {formatCedi(order.deliveryFee)}
                           </span>
@@ -217,7 +278,16 @@ export default function AdminOrdersPage() {
                             size="sm"
                             className="text-xs"
                             disabled={busyId === order.id}
-                            onClick={() => void move(order.id, action.next)}
+                            data-order-id={order.id}
+                            onClick={() => {
+                              // Capture this card's id at click time — do not use list/global state.
+                              const targetOrderId = order.id;
+                              if (action.kind === "assign-rider") {
+                                void assignRider(targetOrderId);
+                              } else {
+                                void move(targetOrderId, action.next);
+                              }
+                            }}
                           >
                             {action.label}
                           </Button>
